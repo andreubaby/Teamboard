@@ -200,4 +200,64 @@ class CardController extends Controller
         WHERE board_column_id = ? AND id IN ({$idsSql})
     ", [$columnId]);
     }
+
+    // PATCH /api/cards/{card}
+    public function update(Request $request, Card $card)
+    {
+        $data = $request->validate([
+            'title'       => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        // Seguridad: comprobar que la card pertenece a un proyecto del usuario
+        $column = BoardColumn::with('project')->findOrFail($card->board_column_id);
+        abort_unless($column->project->owner_id === $request->user()->id, 403);
+
+        $card->update([
+            'title'       => $data['title'],
+            'description' => $data['description'] ?? null,
+        ]);
+
+        return response()->json([
+            'card' => [
+                'id' => $card->id,
+                'title' => $card->title,
+                'description' => $card->description,
+                'position' => $card->position,
+                'board_column_id' => $card->board_column_id,
+            ],
+        ]);
+    }
+
+    // DELETE /api/cards/{card}
+    public function destroy(Request $request, Card $card)
+    {
+        // Seguridad
+        $column = BoardColumn::with('project')->findOrFail($card->board_column_id);
+        abort_unless($column->project->owner_id === $request->user()->id, 403);
+
+        $columnId = (int) $card->board_column_id;
+        $deletedPos = (int) $card->position;
+        $cardId = (int) $card->id;
+
+        return DB::transaction(function () use ($card, $columnId, $deletedPos, $cardId) {
+
+            // borrar la card
+            $card->delete();
+
+            // cerrar hueco de posiciones (0..N-1)
+            Card::where('board_column_id', $columnId)
+                ->where('position', '>', $deletedPos)
+                ->update([
+                    'position' => DB::raw('position - 1'),
+                ]);
+
+            return response()->json([
+                'ok' => true,
+                'deleted_card_id' => $cardId,
+                'board_column_id' => $columnId,
+            ]);
+        });
+    }
+
 }
