@@ -1,0 +1,233 @@
+/* Sidebar base */
+.sidebar {
+    border-right: 1px solid rgba(255,255,255,0.10);
+    background: rgba(15, 23, 42, 0.40);
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+.sb-top {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.10);
+}
+
+.sb-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: rgba(99,102,241,0.22);
+    border: 1px solid rgba(99,102,241,0.35);
+    font-weight: 800;
+}
+
+.titles .name {
+    font-weight: 800;
+    letter-spacing: .2px;
+}
+.titles .sub {
+    font-size: 12px;
+    opacity: .7;
+}
+
+.sb-list {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow: auto;
+}
+
+.sb-item {
+    width: 100%;
+    text-align: left;
+    border: 1px solid rgba(255,255,255,0.10);
+    background: rgba(255,255,255,0.04);
+    color: #e5e7eb;
+    border-radius: 12px;
+    padding: 10px 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: border-color .12s ease, filter .12s ease, transform .12s ease, background .12s ease;
+}
+.sb-item:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+    border-color: rgba(255,255,255,0.16);
+}
+.sb-item.active {
+    border-color: rgba(99,102,241,0.55);
+    background: rgba(99,102,241,0.10);
+}
+
+.dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: rgba(99,102,241,0.75);
+    box-shadow: 0 0 0 4px rgba(99,102,241,0.12);
+}
+
+.sb-item-name {
+    font-size: 13px;
+    font-weight: 650;
+    opacity: .95;
+}
+
+.sb-empty {
+    padding: 12px;
+    font-size: 12.5px;
+    opacity: .7;
+}
+
+.sb-bottom {
+    margin-top: auto;
+    padding: 16px;
+    border-top: 1px solid rgba(255,255,255,0.10);
+}
+
+/* Botones sidebar */
+.sb-btn {
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.06);
+    color: #e5e7eb;
+    padding: 10px 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform .12s ease, filter .12s ease, border-color .12s ease;
+}
+.sb-btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.06);
+    border-color: rgba(255,255,255,0.22);
+}
+.sb-btn:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+    transform: none;
+}
+.sb-btn.danger {
+    border-color: rgba(239,68,68,0.25);
+    background: rgba(239,68,68,0.10);
+}
+
+/* Botón colapsar */
+.sb-collapse {
+    margin-left: auto;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.06);
+    color: #e5e7eb;
+    border-radius: 12px;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: filter .12s ease, border-color .12s ease, transform .22s ease;
+}
+.sb-collapse:hover {
+    filter: brightness(1.06);
+    border-color: rgba(255,255,255,0.22);
+    /* OJO: aquí NO ponemos translateY porque pisaría la rotación */
+}
+
+/* Animación de ocultación (hacia izquierda) */
+.titles,
+.sb-item-name,
+.sb-btn,
+.sb-empty {
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+/* ===================== */
+/*  MEJORA VISUAL COLLAPSE */
+/* ===================== */
+
+/* Más aire arriba y centrado */
+.page.sb-collapsed .sb-top {
+    padding: 12px 10px;
+    gap: 10px;
+}
+
+.page.sb-collapsed .sb-brand {
+    justify-content: center;
+    width: 100%;
+}
+
+.page.sb-collapsed .sb-list {
+    padding: 12px 8px;
+    gap: 10px;            /* más separación entre items */
+    align-items: center;
+}
+
+/* Items: más “botón” y menos “caja vacía” */
+.page.sb-collapsed .sb-item {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.035);
+    border-color: rgba(255,255,255,0.10);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.22);
+}
+
+/* Hover: respuesta más evidente */
+.page.sb-collapsed .sb-item:hover {
+    background: rgba(99,102,241,0.16);
+    border-color: rgba(99,102,241,0.45);
+    box-shadow: 0 14px 30px rgba(0,0,0,0.28);
+}
+
+/* Activo: que se note MUCHO más */
+.page.sb-collapsed .sb-item.active {
+    background: rgba(99,102,241,0.18);
+    border-color: rgba(99,102,241,0.65);
+    box-shadow:
+        0 0 0 4px rgba(99,102,241,0.14),
+        0 16px 36px rgba(0,0,0,0.32);
+}
+
+/* Dot en colapsado: que parezca un “badge” */
+.page.sb-collapsed .dot {
+    width: 12px;
+    height: 12px;
+    background: rgba(99,102,241,0.95);
+    box-shadow:
+        0 0 0 7px rgba(99,102,241,0.16),
+        0 10px 18px rgba(0,0,0,0.30);
+}
+
+/* En activo: dot aún más claro */
+.page.sb-collapsed .sb-item.active .dot {
+    box-shadow:
+        0 0 0 8px rgba(99,102,241,0.20),
+        0 12px 20px rgba(0,0,0,0.35);
+}
+
+/* Botón flecha: centrado y “pill” más suave */
+.page.sb-collapsed .sb-collapse {
+    border-radius: 14px;
+    width: 36px;
+    height: 36px;
+}
+
+/* Footer: que no quede pegado al borde */
+.page.sb-collapsed .sb-bottom {
+    padding: 12px 10px;
+    display: flex;
+    justify-content: center;
+}

@@ -1,0 +1,45 @@
+/* Board SIN scroll lateral */
+.board {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(200px, 1fr));
+    gap: 22px;                 /* espacio entre columnas */
+    align-items: start;
+    overflow: hidden;
+    padding: 18px 18px 24px;   /* aire exterior */
+}
+
+.col-wrap {
+    width: 100%;
+    min-width: 0;
+    display: block;
+}
+
+.col-wrap.col-over .column {
+    border-color: rgba(99,102,241,0.75);
+    box-shadow: 0 0 0 4px rgba(99,102,241,0.16);
+    transform: none;
+}
+
+/* Animación de reflow al reordenar columnas */
+/* Animación de reflow al reordenar columnas */
+.col-move {
+    transition: transform 220ms ease;
+}
+
+/* QUITA transform en enter/leave (déjalo solo en opacity) */
+.col-enter-active,
+.col-leave-active {
+    transition: opacity 160ms ease;
+}
+
+.col-enter-from,
+.col-leave-to {
+    opacity: 0;
+}
+
+/* Si no estás creando/eliminando columnas con TransitionGroup,
+   puedes borrar esto también. Si sí, entonces: */
+.col-leave-active {
+    position: absolute;
+}
+

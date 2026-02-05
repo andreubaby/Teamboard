@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\ColumnCreated;
+use App\Events\ColumnReordered;
 use App\Http\Controllers\Controller;
 use App\Models\BoardColumn;
 use App\Models\Project;
@@ -27,6 +29,17 @@ class BoardColumnController extends Controller
             'name' => $data['name'],
             'position' => $nextPos,
         ]);
+
+        broadcast(new ColumnCreated(
+            projectId: $project->id,
+            column: [
+                'id' => $col->id,
+                'name' => $col->name,
+                'position' => $col->position,
+                'cards' => [],
+            ],
+            senderId: (int) $request->user()->id,
+        ))->toOthers();
 
         return response()->json([
             'column' => [
@@ -97,7 +110,7 @@ class BoardColumnController extends Controller
 
         $ordered = array_values(array_map('intval', $data['ordered_ids']));
 
-        return DB::transaction(function () use ($project, $ordered) {
+        return DB::transaction(function () use ($project, $ordered, $request) {
 
             // Cogemos ids reales del proyecto
             $existing = BoardColumn::where('project_id', $project->id)
@@ -137,10 +150,16 @@ class BoardColumnController extends Controller
             $caseSql = implode(' ', $cases);
 
             DB::statement("
-                UPDATE board_columns
-                SET position = CASE id {$caseSql} END
-                WHERE project_id = ? AND id IN ({$idsSql})
-            ", [$project->id]);
+                    UPDATE board_columns
+                    SET position = CASE id {$caseSql} END
+                    WHERE project_id = ? AND id IN ({$idsSql})
+                ", [$project->id]);
+
+            broadcast(new ColumnReordered(
+                projectId: (int) $project->id,
+                orderedIds: $ordered, // <-- ya es array de ints
+                senderId: (int) $request->user()->id,
+            ))->toOthers();
 
             return response()->json(['ok' => true]);
         });

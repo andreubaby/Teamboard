@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\BoardColumn;
 use App\Models\Project;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use App\Events\BoardCreated;
 
 class ProjectController extends Controller
 {
@@ -28,10 +31,35 @@ class ProjectController extends Controller
             'name' => ['required', 'string', 'max:120'],
         ]);
 
-        $project = Project::create([
-            'owner_id' => $request->user()->id,
-            'name' => $data['name'],
-        ]);
+        $project = DB::transaction(function () use ($request, $data) {
+            $project = Project::create([
+                'owner_id' => $request->user()->id,
+                'name' => $data['name'],
+            ]);
+
+            $defaults = ['To Do', 'In Progress', 'Done'];
+
+            foreach ($defaults as $i => $name) {
+                BoardColumn::create([
+                    'project_id' => $project->id,
+                    'name' => $name,
+                    'position' => $i,
+                ]);
+            }
+
+            return $project;
+        });
+
+        broadcast(new BoardCreated(
+            ownerId: $project->owner_id,
+            project: [
+                'id' => $project->id,
+                'name' => $project->name,
+                'owner_id' => $project->owner_id,
+                'created_at' => $project->created_at,
+            ],
+            senderId: (int) $request->user()->id,
+        ));
 
         return response()->json([
             'project' => [

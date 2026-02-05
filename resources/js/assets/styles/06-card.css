@@ -1,0 +1,78 @@
+.cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;          /* espacio entre cards */
+    padding: 4px 2px 2px;
+    min-height: 70px;
+}
+
+.card {
+    background: rgba(17,24,39,0.82);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.25;
+
+    box-shadow: 0 10px 22px rgba(0,0,0,0.28);
+    transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+
+.card:hover {
+    transform: translateY(-1px);
+    border-color: rgba(255,255,255,0.18);
+    filter: brightness(1.02);
+    box-shadow: 0 14px 30px rgba(0,0,0,0.35);
+}
+
+.card:active { cursor: grabbing; transform: translateY(0); }
+
+.card.over {
+    border-color: rgba(99,102,241,0.75);
+    box-shadow: 0 0 0 4px rgba(99,102,241,0.18), 0 14px 28px rgba(0,0,0,0.35);
+}
+
+.card-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.card-title {
+    font-weight: 600;
+    font-size: 13px;
+    opacity: .95;
+}
+
+.card-desc {
+    margin-top: 4px;
+    font-size: 12px;
+    opacity: .7;
+    white-space: pre-wrap;
+}
+
+.card-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.icon {
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    color: rgba(229,231,235,0.9);
+    border-radius: 8px;
+    padding: 4px 6px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: filter .12s ease, border-color .12s ease, transform .12s ease;
+}
+.icon:hover {
+    filter: brightness(1.08);
+    border-color: rgba(255,255,255,0.18);
+    transform: translateY(-1px);
+}
+.icon.danger {
+    border-color: rgba(239,68,68,0.22);
+    background: rgba(239,68,68,0.08);
+}

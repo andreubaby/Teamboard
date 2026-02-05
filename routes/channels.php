@@ -8,3 +8,8 @@ Broadcast::channel('project.{projectId}', function ($user, $projectId) {
         ->where('owner_id', $user->id)
         ->exists();
 });
+
+// ✅ Sidebar: solo el dueño escucha sus boards
+Broadcast::channel('boards.{userId}', function ($user, $userId) {
+    return (int) $user->id === (int) $userId;
+});
