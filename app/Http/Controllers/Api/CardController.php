@@ -32,16 +32,22 @@ class CardController extends Controller
             'position' => $nextPos,
         ]);
 
+        $senderId = (int) $request->user()->id;
+
         broadcast(new \App\Events\CardCreated(
-            $column->project_id,
+            (int) $column->project_id,
             [
-                'id' => $card->id,
+                'id' => (int) $card->id,
                 'title' => $card->title,
                 'description' => $card->description,
-                'position' => $card->position,
-                'board_column_id' => $card->board_column_id,
+                'position' => (int) $card->position,
+                'board_column_id' => (int) $card->board_column_id,
+
+                // opcional pero recomendable (para filtrar en frontend)
+                'senderId' => $senderId,
             ],
-            $column->id
+            (int) $column->id,
+            $senderId
         ))->toOthers();
 
         return response()->json([
