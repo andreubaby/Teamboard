@@ -1,14 +1,31 @@
+/* 01-LAYOUT.CSS */
+
 .page {
     height: 100vh;
-    color: #e5e7eb;
-    background:
-        radial-gradient(1000px 600px at 15% 10%, rgba(99,102,241,.25), transparent 60%),
-        radial-gradient(900px 600px at 90% 20%, rgba(236,72,153,.18), transparent 55%),
-        radial-gradient(900px 650px at 50% 120%, rgba(34,197,94,.12), transparent 55%),
-        #070a16;
+    color: var(--text-primary); /* */
+
+    /* Usamos la variable de fondo base.
+       Si quieres mantener el gradiente en modo oscuro, puedes dejarlo así,
+       pero para modo claro necesitarás sobreescribirlo. */
+    background-color: var(--bg-app); /* */
+
+    /* Gradiente opcional (se verá sobre el bg-app si este es oscuro/transparente) */
+    background-image:
+        radial-gradient(1000px 600px at 15% 10%, rgba(99,102,241,.15), transparent 60%),
+        radial-gradient(900px 600px at 90% 20%, rgba(236,72,153,.10), transparent 55%);
+
     display: grid;
     grid-template-columns: 280px 1fr;
     overflow: hidden;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* En modo claro, quizás quieras quitar el gradiente oscuro o hacerlo muy sutil */
+body.light-mode .page {
+    background-image: none; /* O un gradiente muy sutil blanco/gris */
 }
 
 /* Colapsado sidebar */

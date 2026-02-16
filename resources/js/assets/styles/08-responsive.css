@@ -1,6 +1,15 @@
 /* 5 -> 4 -> 3 -> 2 -> 1 */
 @media (max-width: 1400px) {
-    .board { grid-template-columns: repeat(4, minmax(200px, 1fr)); }
+    .board {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(200px, 1fr));
+        overflow-x: hidden;
+    }
+
+    .col-wrap {
+        min-width: 0;
+        max-width: none;
+    }
 }
 @media (max-width: 1100px) {
     .board { grid-template-columns: repeat(3, minmax(200px, 1fr)); }

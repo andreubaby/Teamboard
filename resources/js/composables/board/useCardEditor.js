@@ -1,5 +1,5 @@
 import { ref } from "vue";
-import { apiUpdateCard, apiDeleteCard } from "../../services/boardApi";
+import { apiUpdateCard, apiDeleteCard, apiLoadTags } from "../../services/boardApi";
 
 export function useCardEditor({ columns }) {
     const edit = ref({
@@ -9,7 +9,23 @@ export function useCardEditor({ columns }) {
         columnId: null,
         title: "",
         description: "",
+        priority: "normal",
+        tagIds: [],
     });
+
+    const availableTags = ref([]);
+
+    // Load tags once
+    async function loadAllTags() {
+        if (availableTags.value.length === 0) {
+            try {
+                availableTags.value = await apiLoadTags();
+            } catch (e) {
+                console.error("Error loading tags", e);
+            }
+        }
+    }
+    loadAllTags();
 
     function openEdit(card, column) {
         edit.value.open = true;
@@ -18,6 +34,9 @@ export function useCardEditor({ columns }) {
         edit.value.columnId = column.id;
         edit.value.title = card.title;
         edit.value.description = card.description ?? "";
+        edit.value.priority = card.priority ?? "normal";
+        // Map tag objects to just IDs for the form
+        edit.value.tagIds = card.tags ? card.tags.map(t => t.id) : [];
     }
 
     function closeEdit() {
@@ -27,6 +46,8 @@ export function useCardEditor({ columns }) {
         edit.value.columnId = null;
         edit.value.title = "";
         edit.value.description = "";
+        edit.value.priority = "normal";
+        edit.value.tagIds = [];
     }
 
     async function saveEdit() {
@@ -37,21 +58,26 @@ export function useCardEditor({ columns }) {
 
         edit.value.saving = true;
         try {
-            const updated = await apiUpdateCard(edit.value.cardId, {
+            const updatedCard = await apiUpdateCard(edit.value.cardId, {
                 title,
                 description: edit.value.description?.trim() || null,
+                priority: edit.value.priority,
+                tags: edit.value.tagIds,
             });
 
             const col = columns.value.find((c) => c.id === edit.value.columnId);
             if (col) {
                 const c = col.cards.find((x) => x.id === edit.value.cardId);
                 if (c) {
-                    c.title = updated.title;
-                    c.description = updated.description ?? null;
+                    // Update local state completely
+                    Object.assign(c, updatedCard);
                 }
             }
 
             closeEdit();
+        } catch (e) {
+            console.error(e);
+            alert("Error al guardar");
         } finally {
             edit.value.saving = false;
         }
@@ -72,5 +98,12 @@ export function useCardEditor({ columns }) {
         }
     }
 
-    return { edit, openEdit, closeEdit, saveEdit, removeCard };
+    return {
+        edit,
+        availableTags,
+        openEdit,
+        closeEdit,
+        saveEdit,
+        removeCard
+    };
 }

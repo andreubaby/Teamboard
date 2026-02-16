@@ -31,6 +31,7 @@ class ProjectController extends Controller
             'name' => ['required', 'string', 'max:120'],
         ]);
 
+        // Wrap in transaction for safety
         $project = DB::transaction(function () use ($request, $data) {
             $project = Project::create([
                 'owner_id' => $request->user()->id,
@@ -50,8 +51,9 @@ class ProjectController extends Controller
             return $project;
         });
 
+        // Broadcast event
         broadcast(new BoardCreated(
-            ownerId: $project->owner_id,
+            ownerId: (int) $request->user()->id,
             project: [
                 'id' => $project->id,
                 'name' => $project->name,
@@ -59,7 +61,7 @@ class ProjectController extends Controller
                 'created_at' => $project->created_at,
             ],
             senderId: (int) $request->user()->id,
-        ));
+        ))->toOthers();
 
         return response()->json([
             'project' => [
@@ -96,12 +98,14 @@ class ProjectController extends Controller
     {
         abort_unless($project->owner_id === $request->user()->id, 403);
 
-        // Si NO tienes FK cascade, esto lo hace seguro:
-        $project->load('columns.cards');
-        foreach ($project->columns as $col) {
-            $col->cards()->delete();
-        }
-        $project->columns()->delete();
+        // Load relationships to delete children manually if cascade is not set in DB
+        // But assuming cascade is set in DB migration, simple delete works.
+        // If not, use this logic to be safe:
+        $project->columns->each(function($column) {
+            $column->cards()->delete();
+            $column->delete();
+        });
+
         $project->delete();
 
         return response()->json(['ok' => true]);
@@ -112,10 +116,14 @@ class ProjectController extends Controller
     {
         abort_unless($project->owner_id === $request->user()->id, 403);
 
+        // ✅ UPDATE: Load 'tags' relationship for cards
         $project->load([
             'columns' => function ($q) {
                 $q->orderBy('position')
-                    ->with(['cards' => fn($c) => $c->orderBy('position')]);
+                    ->with(['cards' => function($c) {
+                        $c->orderBy('position')
+                            ->with('tags'); // <--- NEW: Eager load tags
+                    }]);
             },
         ]);
 
@@ -135,6 +143,8 @@ class ProjectController extends Controller
                             'title' => $card->title,
                             'description' => $card->description,
                             'position' => $card->position,
+                            'priority' => $card->priority, // <--- NEW: Return priority
+                            'tags' => $card->tags,         // <--- NEW: Return tags array
                         ];
                     })->values(),
                 ];

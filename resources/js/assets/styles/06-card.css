@@ -1,78 +1,222 @@
+/* ----------------------------------------------
+   06-CARD.CSS
+   Estilo de las tarjetas y zonas de drop
+---------------------------------------------- */
+
 .cards {
+    flex: 1;
+    overflow-y: auto; /* Scroll vertical dentro de la columna */
+    padding: 2px 4px;
     display: flex;
     flex-direction: column;
-    gap: 12px;          /* espacio entre cards */
-    padding: 4px 2px 2px;
-    min-height: 70px;
+    gap: 10px;
+    min-height: 50px;
+
+    /* Scrollbar fino interno */
+    scrollbar-width: thin;
+    /* Usamos una variable o un color semitransparente genérico */
+    scrollbar-color: rgba(155, 155, 155, 0.3) transparent;
+    transition: transform 0.2s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.2s;
+    will-change: transform; /* Optimización de rendimiento */
 }
 
+/* --- Tarjeta Individual --- */
 .card {
-    background: rgba(17,24,39,0.82);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 14px;
-    padding: 10px 12px;
-    font-size: 13px;
-    line-height: 1.25;
+    background: var(--bg-card); /* */
+    border: 1px solid var(--border-color); /* */
+    border-radius: 12px;
+    padding: 12px;
+    cursor: grab;
+    position: relative;
+    box-shadow: var(--shadow-card); /* */
+    color: var(--text-primary); /* */
 
-    box-shadow: 0 10px 22px rgba(0,0,0,0.28);
-    transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease, filter .12s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 6px; /* Espaciado vertical interno */
+
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .card:hover {
-    transform: translateY(-1px);
-    border-color: rgba(255,255,255,0.18);
-    filter: brightness(1.02);
-    box-shadow: 0 14px 30px rgba(0,0,0,0.35);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15); /* Sombra más sutil para ambos modos */
+    border-color: rgba(99, 102, 241, 0.5); /* Borde brillante suave índigo */
+    z-index: 10;
 }
 
-.card:active { cursor: grabbing; transform: translateY(0); }
+.card:active { cursor: grabbing; }
 
+/* Estilo cuando una carta pasa por encima de otra (Target) */
 .card.over {
-    border-color: rgba(99,102,241,0.75);
-    box-shadow: 0 0 0 4px rgba(99,102,241,0.18), 0 14px 28px rgba(0,0,0,0.35);
+    border-color: #6366f1;
+    border-top-width: 3px; /* Indicador visual de inserción */
+    background: rgba(99, 102, 241, 0.05);
 }
 
+/* --- ETIQUETAS (TAGS) --- */
+.card-tags {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 2px;
+}
+
+.tag {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 3px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+}
+
+/* Variaciones de color para tags */
+.tag-design {
+    background: rgba(236, 72, 153, 0.15);
+    color: #fbcfe8;
+    border: 1px solid rgba(236, 72, 153, 0.25);
+}
+/* Ajuste para modo claro en tags si fuera necesario, o dejarlos "tintados" */
+body.light-mode .tag-design {
+    color: #db2777; /* Rosa más oscuro para fondo claro */
+    border-color: rgba(236, 72, 153, 0.4);
+}
+
+.tag-high {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+body.light-mode .tag-high {
+    color: #dc2626; /* Rojo más oscuro para fondo claro */
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* --- TÍTULO Y ACCIONES --- */
 .card-row {
     display: flex;
-    align-items: flex-start;
     justify-content: space-between;
-    gap: 10px;
+    align-items: flex-start;
+    gap: 8px;
 }
 
 .card-title {
-    font-weight: 600;
-    font-size: 13px;
-    opacity: .95;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary); /* */
+    line-height: 1.4;
 }
 
 .card-desc {
-    margin-top: 4px;
     font-size: 12px;
-    opacity: .7;
-    white-space: pre-wrap;
+    color: var(--text-secondary); /* */
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Cortar texto largo */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 4px;
 }
 
+/* Botones de acción (Editar/Borrar) */
 .card-actions {
     display: flex;
     gap: 4px;
+    opacity: 0; /* Ocultos por defecto para limpieza */
+    transition: opacity 0.2s;
 }
+.card:hover .card-actions { opacity: 1; }
 
 .icon {
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.05);
-    color: rgba(229,231,235,0.9);
-    border-radius: 8px;
-    padding: 4px 6px;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    border: none;
+    background: rgba(150, 150, 150, 0.1); /* Neutro para ambos modos */
+    color: var(--text-secondary); /* */
     cursor: pointer;
-    font-size: 12px;
-    transition: filter .12s ease, border-color .12s ease, transform .12s ease;
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    transition: all 0.2s;
 }
 .icon:hover {
-    filter: brightness(1.08);
-    border-color: rgba(255,255,255,0.18);
-    transform: translateY(-1px);
+    background: rgba(150, 150, 150, 0.25);
+    color: var(--text-primary);
 }
-.icon.danger {
-    border-color: rgba(239,68,68,0.22);
-    background: rgba(239,68,68,0.08);
+.icon.danger:hover { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+/* --- FOOTER META (Avatar y Fecha) --- */
+.card-footer-meta {
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color); /* */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
+
+.meta-date {
+    font-size: 11px;
+    color: var(--text-secondary); /* */
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mini-avatar {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    font-size: 9px;
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    box-shadow: 0 2px 5px rgba(99, 102, 241, 0.3);
+}
+
+/* --- DROPZONE (Zona final limpia) --- */
+.dropzone {
+    margin-top: 8px;
+    border: 1px dashed var(--border-color); /* */
+    border-radius: 10px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    background: transparent;
+}
+
+/* Texto "Sin tareas" */
+.dropzone .empty {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary); /* */
+    opacity: 0.5;
+    font-style: italic;
+    pointer-events: none;
+}
+
+/* El texto de ayuda "Soltar aquí" */
+.dropzone .hint {
+    font-size: 11px;
+    font-weight: 600;
+    color: #818cf8; /* Índigo */
+    opacity: 0;
+    transform: translateY(4px);
+    transition: all 0.2s;
+    pointer-events: none;
+}
+
+/* ESTADOS DE ARRASTRE */
+.dropzone.over {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: #6366f1;
+    transform: scale(1.02);
+}
+
+/* Mostrar hint y ocultar empty al arrastrar encima */
+.dropzone.over .hint { opacity: 1; transform: translateY(0); }
+.dropzone.over .empty { display: none; }

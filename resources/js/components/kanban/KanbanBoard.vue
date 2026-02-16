@@ -1,11 +1,15 @@
 <template>
-    <TransitionGroup name="col" tag="div" class="board" move-class="col-move">
+    <TransitionGroup
+        ref="boardEl"
+        name="col"
+        tag="div"
+        class="board"
+        move-class="col-move"
+    >
         <div
             v-for="(column, colIdx) in columns"
             :key="column.id"
             class="col-wrap"
-            @dragover.prevent="(e) => $emit('col-dragover', { index: colIdx, e })"
-            @drop.prevent="$emit('col-drop')"
             :class="{ dragging: draggingColumnId === column.id }"
         >
             <KanbanColumn
@@ -14,6 +18,7 @@
                 :draft="addDraft[column.id] ?? ''"
                 :isOver="(idx) => isOver(column.id, idx)"
                 :isOverEnd="() => isOverEnd(column.id)"
+                @col-pointerdown="({ e, columnId }) => onColPointerDown(e, columnId)"
 
                 @toggle-add="$emit('toggle-add', column.id)"
                 @update-draft="(v) => $emit('update-draft', { columnId: column.id, value: v })"
@@ -27,15 +32,18 @@
                 @dragover-card="(payload) => $emit('dragover-card', payload)"
                 @open-edit="$emit('open-edit', $event)"
                 @remove-card="$emit('remove-card', $event)"
-                @col-dragstart="() => emit('col-dragstart', column.id)"
-                @col-dragend="() => emit('col-dragend')"
+
+                @generate-ai="(payload) => $emit('generate-ai', payload)"
             />
         </div>
     </TransitionGroup>
 </template>
 
 <script setup>
+import { ref } from "vue";
 import KanbanColumn from "./KanbanColumn.vue";
+
+const boardEl = ref(null);
 
 defineProps({
     columns: { type: Array, default: () => [] },
@@ -59,11 +67,15 @@ const emit = defineEmits([
     "dragover-card",
     "open-edit",
     "remove-card",
-
-    // columnas
-    "col-dragstart",
-    "col-dragend",
-    "col-dragover",
-    "col-drop",
+    "col-pointerdown",
+    // ✅ Nuevo evento para pasar la petición de IA al padre (Board.vue)
+    "generate-ai"
 ]);
+
+function onColPointerDown(e, columnId) {
+    // ✅ PASA EL DOM REAL, no el ref
+    const domElement = boardEl.value?.$el || boardEl.value;
+
+    emit("col-pointerdown", { e, columnId, boardEl: domElement });
+}
 </script>

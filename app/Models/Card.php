@@ -7,7 +7,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Card extends Model
 {
-    protected $fillable = ['board_column_id', 'title', 'description', 'position'];
+    protected $fillable = ['board_column_id', 'title', 'description', 'position', 'priority'];
+
+    public function tags()
+    {
+        return $this->belongsToMany(Tag::class);
+    }
 
     public function column(): BelongsTo
     {
