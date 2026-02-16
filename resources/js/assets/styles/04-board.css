@@ -1,45 +1,64 @@
-/* Board SIN scroll lateral */
+/* ----------------------------------------------
+   04-BOARD.CSS
+   Contenedor principal y área de scroll
+---------------------------------------------- */
+
 .board {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(200px, 1fr));
-    gap: 22px;                 /* espacio entre columnas */
-    align-items: start;
-    overflow: hidden;
-    padding: 18px 18px 24px;   /* aire exterior */
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+    padding: 24px;
+    height: calc(100vh - 80px);
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    /* Fondo transparente para ver el fondo del layout */
+    background-color: transparent;
 }
 
+/* Wrapper de la columna */
 .col-wrap {
-    width: 100%;
-    min-width: 0;
-    display: block;
+    min-width: 300px;
+    max-width: 300px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
-.col-wrap.col-over .column {
-    border-color: rgba(99,102,241,0.75);
-    box-shadow: 0 0 0 4px rgba(99,102,241,0.16);
-    transform: none;
-}
-
-/* Animación de reflow al reordenar columnas */
-/* Animación de reflow al reordenar columnas */
 .col-move {
-    transition: transform 220ms ease;
+    transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-/* QUITA transform en enter/leave (déjalo solo en opacity) */
+.dragging-columns {
+    cursor: grabbing !important;
+}
+.dragging-columns * {
+    pointer-events: none !important;
+}
+
 .col-enter-active,
 .col-leave-active {
-    transition: opacity 160ms ease;
+    transition: all 0.2s ease;
 }
-
 .col-enter-from,
 .col-leave-to {
     opacity: 0;
+    transform: scale(0.95);
 }
 
-/* Si no estás creando/eliminando columnas con TransitionGroup,
-   puedes borrar esto también. Si sí, entonces: */
-.col-leave-active {
-    position: absolute;
+/* Scrollbar horizontal del tablero */
+.board::-webkit-scrollbar {
+    height: 10px;
 }
-
+.board::-webkit-scrollbar-track {
+    background: rgba(125, 125, 125, 0.1); /* Neutro */
+    margin: 20px;
+    border-radius: 10px;
+}
+.board::-webkit-scrollbar-thumb {
+    background: rgba(125, 125, 125, 0.3); /* Neutro */
+    border-radius: 10px;
+}
+.board::-webkit-scrollbar-thumb:hover {
+    background: rgba(125, 125, 125, 0.5);
+}

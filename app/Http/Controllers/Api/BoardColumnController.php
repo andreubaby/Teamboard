@@ -105,21 +105,20 @@ class BoardColumnController extends Controller
 
         $data = $request->validate([
             'ordered_ids' => ['required', 'array', 'min:1'],
-            'ordered_ids.*' => ['integer'],
+            'ordered_ids.*' => ['integer', 'distinct'],
         ]);
 
         $ordered = array_values(array_map('intval', $data['ordered_ids']));
 
         return DB::transaction(function () use ($project, $ordered, $request) {
 
-            // Cogemos ids reales del proyecto
+            // 1. Obtener IDs existentes para validar
             $existing = BoardColumn::where('project_id', $project->id)
                 ->orderBy('position')
                 ->pluck('id')
                 ->map(fn ($x) => (int) $x)
                 ->all();
 
-            // Validación fuerte: mismo conjunto (evita colar ids de otro project)
             sort($existing);
             $sortedOrdered = $ordered;
             sort($sortedOrdered);
@@ -130,36 +129,30 @@ class BoardColumnController extends Controller
                 ], 422);
             }
 
-            // OJO: si tienes UNIQUE(project_id, position), hacemos “offset” para evitar colisiones
+            // 2. Actualizar posiciones (Lógica de SQL Case/Offset)
+            // Primero un offset para evitar colisiones de UNIQUE constraints temporales
             $OFFSET = 1000000;
-
             BoardColumn::where('project_id', $project->id)
                 ->update(['position' => DB::raw("position + {$OFFSET}")]);
 
-            // UPDATE CASE
-            $cases = [];
-            $ids = [];
+            // Aplicar el nuevo orden
             foreach ($ordered as $pos => $id) {
-                $id = (int) $id;
-                $pos = (int) $pos;
-                $cases[] = "WHEN {$id} THEN {$pos}";
-                $ids[] = $id;
+                BoardColumn::where('project_id', $project->id)
+                    ->where('id', $id)
+                    ->update(['position' => $pos]);
             }
 
-            $idsSql  = implode(',', $ids);
-            $caseSql = implode(' ', $cases);
-
-            DB::statement("
-                    UPDATE board_columns
-                    SET position = CASE id {$caseSql} END
-                    WHERE project_id = ? AND id IN ({$idsSql})
-                ", [$project->id]);
-
-            broadcast(new ColumnReordered(
-                projectId: (int) $project->id,
-                orderedIds: $ordered, // <-- ya es array de ints
-                senderId: (int) $request->user()->id,
-            ))->toOthers();
+            // 3. BROADCAST PROTEGIDO (Aquí estaba el error 500)
+            try {
+                broadcast(new ColumnReordered(
+                    projectId: (int) $project->id,
+                    orderedIds: $ordered,
+                    senderId: (int) $request->user()->id,
+                ))->toOthers();
+            } catch (\Exception $e) {
+                // Si falla Reverb, solo lo logueamos, pero NO rompemos la transacción
+                \Illuminate\Support\Facades\Log::error("⚠️ Error en Broadcast Reorder: " . $e->getMessage());
+            }
 
             return response()->json(['ok' => true]);
         });

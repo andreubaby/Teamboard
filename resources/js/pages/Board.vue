@@ -17,6 +17,7 @@
                 :project="project"
                 :disableAddColumn="!project"
                 @add-column="createColumn"
+                @refresh-board="() => loadBoard(project.id)"
             />
 
             <main class="content">
@@ -33,11 +34,9 @@
                     :isOver="isOver"
                     :isOverEnd="isOverEnd"
                     :draggingColumnId="draggingColumnId"
-                    @col-dragstart="onColumnDragStart"
-                    @col-dragend="onColumnDragEnd"
-                    @col-dragover="({ index, e }) => onColumnDragOver(index, e)"
-                    @col-drop="onColumnDrop"
+                    @col-pointerdown="({ e, columnId, boardEl }) => onColumnPointerDown(e, columnId, boardEl)"
                     @toggle-add="toggleAdd"
+                    @generate-ai="handleAiGeneration"
                     @update-draft="({ columnId, value }) => updateDraft(columnId, value)"
                     @create-card="createCard"
                     @dragover-column="({ column, e }) => onDragOverColumn(column, e)"
@@ -58,6 +57,9 @@
             :saving="edit.saving"
             v-model:title="edit.title"
             v-model:description="edit.description"
+            v-model:priority="edit.priority"
+            v-model:tagIds="edit.tagIds"
+            :availableTags="availableTags"
             @close="closeEdit"
             @save="saveEdit"
         />
@@ -69,6 +71,7 @@ import SidebarBoards from "../components/layout/SidebarBoards.vue";
 import BoardTopbar from "../components/layout/BoardTopbar.vue";
 import KanbanBoard from "../components/kanban/KanbanBoard.vue";
 import CardModalEdit from "../components/modals/CardModalEdit.vue";
+import { http } from "../lib/http";
 
 import { onMounted, onBeforeUnmount, ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
@@ -84,8 +87,20 @@ const router = useRouter();
 const route = useRoute();
 const auth = useAuthStore();
 
-const sidebarCollapsed = ref(false);
+// --- LÓGICA DE PERSISTENCIA DEL SIDEBAR ---
+// 1. Leemos el estado guardado (si existe)
+const storedState = localStorage.getItem('harvis_sb_collapsed');
 
+// 2. Inicializamos: si es 'true' empieza cerrado, si no, abierto.
+// (Aquí he borrado la línea duplicada que tenías antes)
+const sidebarCollapsed = ref(storedState === 'true');
+
+// 3. Vigilamos los cambios para guardar la preferencia
+watch(sidebarCollapsed, (newValue) => {
+    localStorage.setItem('harvis_sb_collapsed', newValue);
+});
+
+// --- AUTH ---
 async function ensureAuth() {
     if (!auth.user) await auth.fetchUser();
     if (!auth.user) {
@@ -119,16 +134,10 @@ const {
     subscribeBoardsRealtime,
     subscribeProjectRealtime,
     disconnectAll,
-} = useBoardRealtime({ auth, projects, project, columns });
+} = useBoardRealtime({ auth, projects, project, columns, loadBoard });
 
 // Column DnD
-const {
-    draggingColumnId,
-    onColumnDragStart,
-    onColumnDragEnd,
-    onColumnDragOver,
-    onColumnDrop,
-} = useColumnDnD({ project, columns });
+const { draggingColumnId, onColumnPointerDown } = useColumnDnD({ project, columns });
 
 // Card DnD + create
 const {
@@ -195,6 +204,62 @@ onMounted(async () => {
 onBeforeUnmount(() => {
     disconnectAll();
 });
+
+// --- LÓGICA DE HARVIS (IA) ---
+function buildAiNotice(payload) {
+    if (!payload || typeof payload !== "object") return "";
+
+    const warnings = [];
+    if (payload.context_truncated) {
+        warnings.push(payload.context_warning || "El contexto enviado a la IA fue truncado.");
+    }
+
+    const failed = payload.failed_operations || [];
+    if (Array.isArray(failed) && failed.length) {
+        const preview = failed
+            .slice(0, 3)
+            .map((item) => `#${item.index}: ${item.reason}`)
+            .join(" | ");
+        warnings.push(`Operaciones fallidas: ${preview}`);
+    }
+
+    return warnings.join("\n");
+}
+
+async function handleAiGeneration({ columnId, prompt }) {
+    if (!prompt.trim()) return;
+
+    try {
+        // console.log("🤖 Harvis pensando...");
+
+        const response = await http.post('/api/ai/handle', {
+            column_id: columnId,
+            prompt: prompt
+        });
+
+        const { action } = response.data;
+
+        // Si Harvis creó tareas o reordenó, recargamos el tablero
+        if (action === 'reordered' || action === 'created') {
+            await loadBoard(project.value.id);
+        }
+
+        const notice = buildAiNotice(response.data);
+        if (notice) {
+            alert(notice);
+        }
+
+    } catch (error) {
+        console.error("Error con Harvis AI:", error);
+        const status = error?.response?.status;
+        if (status === 429) {
+            alert("Harvis esta en limite de cuota. Intenta mas tarde.");
+            return;
+        }
+        const msg = error?.response?.data?.message || "Harvis tuvo un problema procesando tu solicitud.";
+        alert(msg);
+    }
+}
 </script>
 
 <style></style>

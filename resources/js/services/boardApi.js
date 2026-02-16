@@ -34,11 +34,16 @@ export async function apiCreateCard(columnId, title) {
     return res.data.card;
 }
 
+export async function apiLoadTags() {
+    const res = await http.get("/api/tags");
+    return res.data;
+}
+
+// apiUpdateCard remains the same, just ensure it handles the payload correctly
 export async function apiUpdateCard(cardId, payload) {
     const res = await http.patch(`/api/cards/${cardId}`, payload);
     return res.data.card;
 }
-
 export async function apiDeleteCard(cardId) {
     await http.delete(`/api/cards/${cardId}`);
 }
