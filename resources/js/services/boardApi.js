@@ -34,11 +34,16 @@ export async function apiCreateCard(columnId, title) {
     return res.data.card;
 }
 
+export async function apiLoadTags() {
+    const res = await http.get("/api/tags");
+    return res.data;
+}
+
+// apiUpdateCard remains the same, just ensure it handles the payload correctly
 export async function apiUpdateCard(cardId, payload) {
     const res = await http.patch(`/api/cards/${cardId}`, payload);
     return res.data.card;
 }
-
 export async function apiDeleteCard(cardId) {
     await http.delete(`/api/cards/${cardId}`);
 }
@@ -48,4 +53,14 @@ export async function apiMoveCard(cardId, toColumnId, toPosition) {
         to_board_column_id: toColumnId,
         to_position: toPosition,
     });
+}
+
+export async function apiRemoveMember(projectId, userId) {
+    const res = await http.delete(`/api/projects/${projectId}/members/${userId}`);
+    return res.data;
+}
+
+export async function apiAddComment(cardId, content) {
+    const { data } = await http.post(`/api/cards/${cardId}/comments`, { content });
+    return data.comment;
 }

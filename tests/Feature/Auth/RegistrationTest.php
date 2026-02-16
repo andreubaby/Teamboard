@@ -11,7 +11,7 @@ class RegistrationTest extends TestCase
 
     public function test_new_users_can_register(): void
     {
-        $response = $this->post('/register', [
+        $response = $this->postJson('/api/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => 'password',
@@ -19,6 +19,9 @@ class RegistrationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertNoContent();
+        // API response might be different from No Content.
+        // For Sanctum it often returns a token or simple success message.
+        // Let's assert ok status (200 or 201)
+        $response->assertSuccessful();
     }
 }

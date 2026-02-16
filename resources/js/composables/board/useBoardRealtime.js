@@ -1,14 +1,18 @@
 import { ref } from "vue";
 import { makeEcho } from "../../lib/echo";
 import { normalizePositions } from "../../utils/kanban";
+import { attachEchoToHttp } from "../../lib/http";
 
-export function useBoardRealtime({ auth, projects, project, columns }) {
+export function useBoardRealtime({ auth, projects, project, columns, loadBoard }) {
     const echoRef = ref(null);
     let subscribedProjectId = null;
     let subscribedBoardsUserId = null;
 
     function ensureEcho() {
-        if (!echoRef.value) echoRef.value = makeEcho();
+        if (!echoRef.value) {
+            echoRef.value = makeEcho();
+            attachEchoToHttp(echoRef.value);
+        }
     }
 
     function disconnectProjectChannel() {
@@ -23,7 +27,6 @@ export function useBoardRealtime({ auth, projects, project, columns }) {
         subscribedBoardsUserId = null;
     }
 
-    // OJO: esto requiere que tú emitas un evento BoardCreated en backend
     function subscribeBoardsRealtime(userId) {
         ensureEcho();
         if (subscribedBoardsUserId === userId) return;
@@ -48,8 +51,20 @@ export function useBoardRealtime({ auth, projects, project, columns }) {
             .listen(".CardCreated", (e) => applyRemoteCardCreated(e))
             .listen(".CardMoved", (e) => applyRemoteCardMoved(e))
             .listen(".ColumnCreated", (e) => applyRemoteColumnCreated(e))
-            .listen(".ColumnReordered", (e) => applyRemoteColumnReordered(e)); // ✅ NUEVO
+            .listen(".ColumnReordered", (e) => applyRemoteColumnReordered(e))
+            .listen(".CardUpdated", (e) => applyRemoteCardUpdated(e))
+            .listen(".CardDeleted", (e) => applyRemoteCardDeleted(e))
+            // 👇 NUEVO: Escuchamos cuando se añade un comentario
+            .listen(".CommentAdded", (e) => applyRemoteCommentAdded(e))
+            .listen(".BoardRefreshed", async () => {
+                console.log("♻️ BoardRefreshed recibido. Recargando...");
+                if (loadBoard && subscribedProjectId) {
+                    await loadBoard(subscribedProjectId);
+                }
+            });
     }
+
+    // --- Handlers ---
 
     function applyRemoteBoardCreated(e) {
         const p = e?.project ?? e;
@@ -65,18 +80,11 @@ export function useBoardRealtime({ auth, projects, project, columns }) {
     }
 
     function applyRemoteColumnCreated(e) {
-        // ignora tu propio evento (si backend no usa toOthers)
-        const senderId = e?.senderId ?? e?.sender_id ?? null;
-        if (senderId && auth?.user?.id && Number(senderId) === Number(auth.user.id)) return;
-
         const col = e?.column ?? e;
         if (!col?.id) return;
 
-        const current = project.value?.id;
-        if (!current) return;
-
-        // si backend manda project_id úsalo para filtrar
-        if (col.project_id && Number(col.project_id) !== Number(current)) return;
+        const currentProjectId = project.value?.id;
+        if (!currentProjectId) return;
 
         if (columns.value.some((c) => Number(c.id) === Number(col.id))) return;
 
@@ -86,15 +94,10 @@ export function useBoardRealtime({ auth, projects, project, columns }) {
             position: col.position ?? columns.value.length,
             cards: col.cards ?? [],
         });
-
         columns.value.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-        columns.value.forEach((c, i) => (c.position = i));
     }
 
-    // ✅ NUEVO: aplicar reorder remoto
     function applyRemoteColumnReordered(e) {
-        // ❌ NO ignores por senderId (en multi-tab mismo usuario lo bloquearías)
-
         const orderedIds = e?.orderedIds ?? e?.ordered_ids ?? [];
         if (!Array.isArray(orderedIds) || orderedIds.length === 0) return;
 
@@ -106,7 +109,6 @@ export function useBoardRealtime({ auth, projects, project, columns }) {
             if (col) next.push(col);
         }
 
-        // por si hay desync, mete las que falten al final
         if (next.length !== columns.value.length) {
             const orderedSet = new Set(orderedIds.map(Number));
             const missing = columns.value.filter((c) => !orderedSet.has(Number(c.id)));
@@ -116,10 +118,12 @@ export function useBoardRealtime({ auth, projects, project, columns }) {
         columns.value = next;
         columns.value.forEach((c, i) => (c.position = i));
     }
+
     function applyRemoteCardCreated(e) {
-        const payload = e?.card ? e.card : e;
-        const colId =
-            payload.board_column_id ?? e.board_column_id ?? e.column_id ?? payload.column_id;
+        const payload = e?.card ?? e;
+        if (!payload || !payload.id) return;
+
+        const colId = payload.board_column_id ?? e.columnId;
         if (!colId) return;
 
         const col = columns.value.find((c) => Number(c.id) === Number(colId));
@@ -135,33 +139,101 @@ export function useBoardRealtime({ auth, projects, project, columns }) {
             description: payload.description ?? null,
             position: pos,
             board_column_id: Number(colId),
+            tags: payload.tags || [],
+            priority: payload.priority || 'normal',
+            assignee_id: payload.assignee_id ?? null,
+            assignee: payload.assignee ?? null,
+            comments: payload.comments || [], // 👇 AÑADIDO: Preparamos el array de comentarios
         });
 
         normalizePositions(col);
     }
 
     function applyRemoteCardMoved(e) {
-        const cardId = e.card_id ?? e.cardId ?? e.id;
-        const toColId = e.to_column_id ?? e.toColumnId;
-        const toPos = e.to_position ?? e.toPosition ?? 0;
+        const cardId = e.cardId ?? e.card_id;
+        const toColId = e.toColumnId ?? e.to_column_id;
+        const toPos = e.toPosition ?? e.to_position ?? 0;
 
         if (!cardId || !toColId) return;
 
-        const fromCol = columns.value.find((c) => c.cards.some((x) => Number(x.id) === Number(cardId)));
-        if (!fromCol) return;
+        let fromCol = null;
+        let cardObj = null;
 
-        const idx = fromCol.cards.findIndex((x) => Number(x.id) === Number(cardId));
-        if (idx === -1) return;
+        for (const col of columns.value) {
+            const found = col.cards.find(c => Number(c.id) === Number(cardId));
+            if (found) {
+                fromCol = col;
+                cardObj = found;
+                break;
+            }
+        }
 
-        const [moved] = fromCol.cards.splice(idx, 1);
+        if (!fromCol || !cardObj) return;
+
+        const idx = fromCol.cards.indexOf(cardObj);
+        if (idx > -1) fromCol.cards.splice(idx, 1);
         normalizePositions(fromCol);
 
         const destCol = columns.value.find((c) => Number(c.id) === Number(toColId));
-        if (!destCol) return;
+        if (destCol) {
+            cardObj.board_column_id = Number(toColId);
+            cardObj.position = toPos;
 
-        const safeIndex = Math.max(0, Math.min(Number(toPos) || 0, destCol.cards.length));
-        destCol.cards.splice(safeIndex, 0, moved);
-        normalizePositions(destCol);
+            const safeIndex = Math.max(0, Math.min(Number(toPos), destCol.cards.length));
+            destCol.cards.splice(safeIndex, 0, cardObj);
+            normalizePositions(destCol);
+        }
+    }
+
+    function applyRemoteCardUpdated(e) {
+        const cardData = e.card ?? e;
+        if (!cardData || !cardData.id) return;
+
+        console.log("📡 EVENTO RECIBIDO (CardUpdated):", cardData);
+
+        for (const col of columns.value) {
+            const card = col.cards.find(c => Number(c.id) === Number(cardData.id));
+            if (card) {
+                Object.assign(card, cardData);
+                return;
+            }
+        }
+    }
+
+    function applyRemoteCardDeleted(e) {
+        const cardId = e.cardId ?? e.card_id ?? e.id;
+        if (!cardId) return;
+
+        console.log("🗑️ Aplicando borrado remoto para ID:", cardId);
+
+        for (const col of columns.value) {
+            const idx = col.cards.findIndex(c => Number(c.id) === Number(cardId));
+            if (idx !== -1) {
+                col.cards.splice(idx, 1);
+                normalizePositions(col);
+                return;
+            }
+        }
+    }
+
+    // 👇 AÑADIDO: Manejador para nuevos comentarios recibidos por WebSocket
+    function applyRemoteCommentAdded(e) {
+        const comment = e.comment;
+        if (!comment || !comment.card_id) return;
+
+        console.log("💬 EVENTO RECIBIDO (CommentAdded):", comment);
+
+        for (const col of columns.value) {
+            const card = col.cards.find(c => Number(c.id) === Number(comment.card_id));
+            if (card) {
+                if (!card.comments) card.comments = [];
+                // Solo lo insertamos si no existe ya en el array (evita duplicados si tú mismo lo enviaste)
+                if (!card.comments.some(c => Number(c.id) === Number(comment.id))) {
+                    card.comments.push(comment);
+                }
+                return;
+            }
+        }
     }
 
     function disconnectAll() {

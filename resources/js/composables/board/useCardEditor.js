@@ -1,5 +1,6 @@
 import { ref } from "vue";
-import { apiUpdateCard, apiDeleteCard } from "../../services/boardApi";
+// 👇 Importamos apiAddComment
+import { apiUpdateCard, apiDeleteCard, apiLoadTags, apiAddComment } from "../../services/boardApi";
 
 export function useCardEditor({ columns }) {
     const edit = ref({
@@ -9,7 +10,24 @@ export function useCardEditor({ columns }) {
         columnId: null,
         title: "",
         description: "",
+        priority: "normal",
+        tagIds: [],
+        assigneeId: null,
+        comments: [], // 👇 AÑADIDO: Estado para los comentarios
     });
+
+    const availableTags = ref([]);
+
+    async function loadAllTags() {
+        if (availableTags.value.length === 0) {
+            try {
+                availableTags.value = await apiLoadTags();
+            } catch (e) {
+                console.error("Error loading tags", e);
+            }
+        }
+    }
+    loadAllTags();
 
     function openEdit(card, column) {
         edit.value.open = true;
@@ -18,6 +36,12 @@ export function useCardEditor({ columns }) {
         edit.value.columnId = column.id;
         edit.value.title = card.title;
         edit.value.description = card.description ?? "";
+        edit.value.priority = card.priority ?? "normal";
+        edit.value.tagIds = card.tags ? card.tags.map(t => t.id) : [];
+        edit.value.assigneeId = card.assignee_id ?? null;
+
+        // 👇 AÑADIDO: Copiamos los comentarios de la tarjeta al editor
+        edit.value.comments = card.comments ? [...card.comments] : [];
     }
 
     function closeEdit() {
@@ -27,6 +51,10 @@ export function useCardEditor({ columns }) {
         edit.value.columnId = null;
         edit.value.title = "";
         edit.value.description = "";
+        edit.value.priority = "normal";
+        edit.value.tagIds = [];
+        edit.value.assigneeId = null;
+        edit.value.comments = []; // 👇 AÑADIDO: Limpiamos los comentarios
     }
 
     async function saveEdit() {
@@ -37,21 +65,26 @@ export function useCardEditor({ columns }) {
 
         edit.value.saving = true;
         try {
-            const updated = await apiUpdateCard(edit.value.cardId, {
+            const updatedCard = await apiUpdateCard(edit.value.cardId, {
                 title,
                 description: edit.value.description?.trim() || null,
+                priority: edit.value.priority,
+                tags: edit.value.tagIds,
+                assignee_id: edit.value.assigneeId,
             });
 
             const col = columns.value.find((c) => c.id === edit.value.columnId);
             if (col) {
                 const c = col.cards.find((x) => x.id === edit.value.cardId);
                 if (c) {
-                    c.title = updated.title;
-                    c.description = updated.description ?? null;
+                    Object.assign(c, updatedCard);
                 }
             }
 
             closeEdit();
+        } catch (e) {
+            console.error(e);
+            alert("Error al guardar");
         } finally {
             edit.value.saving = false;
         }
@@ -72,5 +105,38 @@ export function useCardEditor({ columns }) {
         }
     }
 
-    return { edit, openEdit, closeEdit, saveEdit, removeCard };
+    // 👇 AÑADIDO: Función para enviar un comentario
+    async function sendComment(text) {
+        if (!edit.value.cardId) return;
+        try {
+            // Mandamos la petición al backend
+            const newComment = await apiAddComment(edit.value.cardId, text);
+
+            // Lo añadimos instantáneamente al modal actual para verlo
+            edit.value.comments.push(newComment);
+
+            // Lo añadimos también al estado principal de la tarjeta en el tablero
+            const col = columns.value.find((c) => c.id === edit.value.columnId);
+            if (col) {
+                const c = col.cards.find((x) => x.id === edit.value.cardId);
+                if (c) {
+                    if (!c.comments) c.comments = [];
+                    c.comments.push(newComment);
+                }
+            }
+        } catch(e) {
+            console.error("Error enviando comentario", e);
+            alert("Error al enviar el comentario");
+        }
+    }
+
+    return {
+        edit,
+        availableTags,
+        openEdit,
+        closeEdit,
+        saveEdit,
+        removeCard,
+        sendComment // 👇 Exportamos la nueva función
+    };
 }

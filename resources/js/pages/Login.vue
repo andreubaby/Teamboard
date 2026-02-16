@@ -8,12 +8,17 @@ const auth = useAuthStore();
 
 const email = ref("");
 const password = ref("");
-const remember = ref(false);      // ✅ NUEVO
+const remember = ref(false);
 const localError = ref("");
 
 const uiError = computed(() => localError.value || auth.error);
 
-// ✅ opcional: limpia error al escribir
+// Función simple para escapar caracteres peligrosos (Sanitización básica en cliente)
+function sanitizeInput(input) {
+    if (!input) return "";
+    return input.replace(/[<>]/g, "").trim();
+}
+
 watch([email, password], () => {
     if (localError.value) localError.value = "";
     if (auth.error) auth.error = null;
@@ -21,269 +26,284 @@ watch([email, password], () => {
 
 async function submit() {
     localError.value = "";
+
+    // 1. Sanitización
+    const cleanEmail = sanitizeInput(email.value);
+    const cleanPassword = password.value; // La contraseña no se debe alterar, pero se maneja con cuidado
+
+    // 2. Validación básica de frontend
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+        localError.value = "Por favor, introduce un correo electrónico válido.";
+        return;
+    }
+
+    if (!cleanPassword) {
+        localError.value = "La contraseña es obligatoria.";
+        return;
+    }
+
     try {
-        await auth.login(email.value, password.value, remember.value); // ✅ pasa remember
+        // Enviamos la versión limpia del email
+        await auth.login(cleanEmail, cleanPassword, remember.value);
         router.push("/app");
     } catch (e) {
         const data = e?.response?.data;
-        if (data?.errors) {
-            localError.value = Object.values(data.errors).flat().join("\n");
-        } else if (data?.message) {
-            localError.value = data.message;
-        } else {
-            localError.value = "Login fallido";
-        }
+        // Evitamos mostrar HTML crudo que pueda venir del servidor (aunque Vue escapa {{}} por defecto)
+        localError.value = data?.message || "Credenciales incorrectas";
     }
 }
 </script>
 
 <template>
     <div class="page">
-        <span class="blob blob-1" aria-hidden="true"></span>
-        <span class="blob blob-2" aria-hidden="true"></span>
+        <div class="ambient-light"></div>
 
-        <div class="card" role="dialog" aria-label="Login">
-            <div class="brand">
-                <div class="logo" aria-hidden="true">TB</div>
-                <div>
-                    <h1 class="title">Teamboard</h1>
-                    <p class="subtitle">Inicia sesión para continuar</p>
+        <div class="card-glass">
+            <header class="header">
+                <div class="logo-box">TB</div>
+                <div class="texts">
+                    <h1>Teamboard</h1>
+                    <p>Gestiona tus proyectos con fluidez</p>
                 </div>
-            </div>
+            </header>
 
-            <form @submit.prevent="submit" class="form" novalidate>
-                <label class="label">
-                    <span>Email</span>
-                    <div class="field">
-                        <span class="icon" aria-hidden="true">✉️</span>
+            <form @submit.prevent="submit" class="form-stack">
+                <div class="input-group">
+                    <label>Correo Electrónico</label>
+                    <div class="field-wrapper">
+                        <span class="field-icon">✉️</span>
                         <input
                             v-model.trim="email"
                             type="email"
-                            class="input"
-                            autocomplete="email"
-                            placeholder="tu@email.com"
+                            placeholder="nombre@ejemplo.com"
+                            autofocus
                         />
                     </div>
-                </label>
+                </div>
 
-                <label class="label">
-                    <span>Password</span>
-                    <div class="field">
-                        <span class="icon" aria-hidden="true">🔒</span>
+                <div class="input-group">
+                    <label>Contraseña</label>
+                    <div class="field-wrapper">
+                        <span class="field-icon">🔒</span>
                         <input
                             v-model="password"
                             type="password"
-                            class="input"
-                            autocomplete="current-password"
                             placeholder="••••••••"
                         />
                     </div>
-                </label>
+                </div>
 
-                <div class="row">
-                    <label class="remember">
+                <div class="actions">
+                    <label class="checkbox-wrapper">
                         <input v-model="remember" type="checkbox" />
                         <span>Recordarme</span>
                     </label>
-
-                    <a class="link" href="#" @click.prevent>¿Olvidaste tu contraseña?</a>
+                    <a href="#" class="forgot-link">¿Olvidaste la contraseña?</a>
                 </div>
 
-                <button class="btn" :disabled="auth.loading">
-                    <span v-if="auth.loading" class="spinner" aria-hidden="true"></span>
-                    <span>{{ auth.loading ? "Entrando..." : "Entrar" }}</span>
+                <button class="btn-primary" :disabled="auth.loading">
+                    <span v-if="auth.loading" class="spinner"></span>
+                    <span>{{ auth.loading ? "Accediendo..." : "Iniciar Sesión" }}</span>
                 </button>
 
-                <pre v-if="uiError" class="error">{{ uiError }}</pre>
-
-                <p class="foot">
-                    ¿No tienes cuenta?
-                    <a class="link" href="#" @click.prevent>Crear una</a>
-                </p>
+                <div v-if="uiError" class="error-banner">
+                    ⚠️ {{ uiError }}
+                </div>
             </form>
+
+            <footer class="footer">
+                ¿Aún no tienes cuenta?
+                <router-link to="/signup">Regístrate gratis</router-link>
+            </footer>
         </div>
     </div>
 </template>
 
 <style scoped>
+/* --- Layout & Background --- */
 .page {
-    position: relative; /* <-- importante para los blobs */
     min-height: 100vh;
-    display: grid;
-    place-items: center;
-    padding: 24px;
-    color: #e5e7eb;
-    background:
-        radial-gradient(1200px 700px at 20% 10%, rgba(99,102,241,0.30), transparent 60%),
-        radial-gradient(900px 600px at 90% 30%, rgba(236,72,153,0.20), transparent 55%),
-        radial-gradient(800px 600px at 40% 110%, rgba(34,197,94,0.12), transparent 55%),
-        #070a16;
-    overflow: hidden;
-}
-
-.blob {
-    position: absolute;
-    width: 520px;
-    height: 520px;
-    filter: blur(55px);
-    opacity: 0.55;
-    pointer-events: none;
-}
-.blob-1 {
-    background: radial-gradient(circle at 30% 30%, rgba(99,102,241,0.9), transparent 60%);
-    top: -220px;
-    left: -160px;
-}
-.blob-2 {
-    background: radial-gradient(circle at 60% 40%, rgba(236,72,153,0.75), transparent 60%);
-    bottom: -240px;
-    right: -180px;
-}
-
-.card {
-    width: 100%;
-    max-width: 420px;
-    position: relative;
-    border-radius: 20px;
-    padding: 22px;
-    background: rgba(17, 24, 39, 0.55);
-    border: 1px solid rgba(255,255,255,0.10);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.05) inset;
-    backdrop-filter: blur(12px);
-}
-
-.brand {
     display: flex;
-    gap: 12px;
     align-items: center;
-    margin-bottom: 14px;
-}
-.logo {
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
-    display: grid;
-    place-items: center;
-    font-weight: 800;
-    letter-spacing: 0.5px;
-    background: linear-gradient(135deg, rgba(99,102,241,0.95), rgba(236,72,153,0.85));
-    box-shadow: 0 12px 30px rgba(99,102,241,0.25);
+    justify-content: center;
+    background-color: #0f172a;
+    position: relative;
+    overflow: hidden;
+    font-family: 'Inter', sans-serif;
+    padding: 20px;
 }
 
-.title { margin: 0; font-size: 22px; line-height: 1.1; }
-.subtitle { margin: 4px 0 0; color: rgba(229,231,235,0.72); font-size: 13px; }
+/* Luz ambiental animada */
+.ambient-light {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 120vw; height: 120vh;
+    background:
+        radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.15), transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.15), transparent 50%);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    animation: pulse 10s ease-in-out infinite alternate;
+}
 
-.form { display: grid; gap: 12px; margin-top: 10px; }
-.label { display: grid; gap: 6px; font-size: 12.5px; color: rgba(229,231,235,0.9); }
+/* --- Glass Card --- */
+.card-glass {
+    width: 100%;
+    max-width: 400px;
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    padding: 32px;
+    box-shadow:
+        0 25px 50px -12px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
-.field {
-    display: grid;
-    grid-template-columns: 34px 1fr;
+/* --- Header --- */
+.header {
+    display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    border-radius: 14px;
-    background: rgba(15, 23, 42, 0.65);
-    border: 1px solid rgba(255,255,255,0.10);
-    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+    gap: 16px;
+    margin-bottom: 32px;
 }
-.field:focus-within {
-    border-color: rgba(99,102,241,0.75);
-    box-shadow: 0 0 0 4px rgba(99,102,241,0.18);
-    transform: translateY(-1px);
-}
-
-.icon {
-    width: 34px;
-    height: 34px;
+.logo-box {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, #6366f1, #a855f7);
     border-radius: 12px;
     display: grid;
     place-items: center;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.08);
-    font-size: 14px;
+    font-weight: 800;
+    color: white;
+    font-size: 18px;
+    box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+}
+.texts h1 { margin: 0; font-size: 20px; color: #f8fafc; font-weight: 600; }
+.texts p { margin: 4px 0 0; font-size: 13px; color: #94a3b8; }
+
+/* --- Forms --- */
+.form-stack { display: grid; gap: 20px; }
+
+.input-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: #cbd5e1;
+    margin-bottom: 6px;
+    margin-left: 4px;
 }
 
-.input {
+.field-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.field-icon {
+    position: absolute;
+    left: 14px;
+    opacity: 0.6;
+    font-size: 16px;
+    transition: 0.2s;
+}
+.field-wrapper input {
     width: 100%;
-    background: transparent;
-    border: none;
-    color: #e5e7eb;
-    outline: none;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 12px 16px 12px 42px;
+    color: white;
     font-size: 14px;
+    transition: all 0.2s ease;
 }
-.input::placeholder { color: rgba(229,231,235,0.45); }
+.field-wrapper input:focus {
+    outline: none;
+    border-color: #818cf8;
+    background: rgba(15, 23, 42, 0.9);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+}
+.field-wrapper input:focus + .field-icon { opacity: 1; transform: scale(1.1); }
 
-.row {
+/* --- Actions --- */
+.actions {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 10px;
-    margin-top: 2px;
+    font-size: 13px;
 }
-.remember {
-    display: inline-flex;
+.checkbox-wrapper {
+    display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12.5px;
-    color: rgba(229,231,235,0.8);
-}
-.remember input { accent-color: #6366f1; }
-
-.link { color: rgba(167, 174, 255, 0.95); text-decoration: none; font-size: 12.5px; }
-.link:hover { text-decoration: underline; }
-
-.btn {
-    margin-top: 4px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    width: 100%;
-    border: none;
-    color: white;
-    border-radius: 14px;
-    padding: 11px 14px;
+    color: #94a3b8;
     cursor: pointer;
-    font-weight: 700;
-    letter-spacing: 0.2px;
-    background: linear-gradient(135deg, #4f46e5, #7c3aed);
-    box-shadow: 0 14px 30px rgba(79,70,229,0.28), 0 1px 0 rgba(255,255,255,0.10) inset;
-    transition: transform .12s ease, filter .12s ease;
 }
-.btn:hover { filter: brightness(1.05); transform: translateY(-1px); }
-.btn:active { transform: translateY(0px); }
-.btn:disabled { opacity: 0.65; cursor: not-allowed; filter: grayscale(0.2); }
+.forgot-link {
+    color: #818cf8;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+.forgot-link:hover { color: #a5b4fc; text-decoration: underline; }
 
-.spinner {
-    width: 16px;
-    height: 16px;
-    border-radius: 999px;
-    border: 2px solid rgba(255,255,255,0.35);
-    border-top-color: rgba(255,255,255,0.95);
-    animation: spin 0.9s linear infinite;
+/* --- Button --- */
+.btn-primary {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(to right, #4f46e5, #7c3aed);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s, filter 0.2s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+}
+.btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(1px); }
+.btn-primary:disabled { opacity: 0.7; cursor: not-allowed; filter: grayscale(0.5); }
+
+/* --- Error & Footer --- */
+.error-banner {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 13px;
+    text-align: center;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    animation: shake 0.4s ease-in-out;
+}
+
+.footer {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 13px;
+    color: #64748b;
+}
+.footer a { color: #e2e8f0; font-weight: 600; text-decoration: none; }
+
+/* --- Animations --- */
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes pulse {
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+    100% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.9; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-
-.error {
-    background: rgba(239,68,68,0.10);
-    border: 1px solid rgba(239,68,68,0.35);
-    padding: 10px 12px;
-    border-radius: 14px;
-    margin: 0;
-    white-space: pre-wrap;
-    font-size: 12px;
-    box-shadow: 0 10px 22px rgba(0,0,0,0.25);
+.spinner {
+    width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite;
 }
-.foot {
-    margin: 4px 0 0;
-    font-size: 12.5px;
-    color: rgba(229,231,235,0.72);
-    text-align: center;
-}
-
-@media (max-width: 420px) {
-    .card { padding: 18px; border-radius: 18px; }
-    .row { flex-direction: column; align-items: flex-start; }
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
 }
 </style>

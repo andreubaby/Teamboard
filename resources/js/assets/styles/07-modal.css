@@ -1,48 +1,281 @@
+/* ----------------------------------------------
+   07-MODAL.CSS
+   Ventanas emergentes de edición
+---------------------------------------------- */
+
 .modal-backdrop {
     position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.55);
-    backdrop-filter: blur(6px);
-    display: grid;
-    place-items: center;
-    z-index: 50;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.6); /* Oscuro siempre para enfocar atención */
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease-out;
 }
 
 .modal {
-    width: min(520px, calc(100vw - 24px));
-    background: rgba(17, 24, 39, 0.92);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 18px;
-    padding: 16px;
-    box-shadow: 0 30px 80px rgba(0,0,0,0.55);
+    /* CAMBIO: Fondo y borde dinámicos */
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+
+    width: 90%;
+    max-width: 500px;
+    border-radius: 16px;
+    padding: 24px;
+
+    /* Sombra fuerte para elevar el modal */
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    animation: scaleIn 0.2s ease-out;
 }
 
 .modal-title {
-    font-weight: 800;
-    margin-bottom: 12px;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-primary); /* */
 }
 
 .lbl {
     font-size: 12px;
-    opacity: .75;
-    display: block;
-    margin: 10px 0 6px;
+    font-weight: 600;
+    color: var(--text-secondary); /* */
+    margin-bottom: -10px;
+    margin-left: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.ta {
+/* Inputs del modal */
+.modal .input,
+.modal .ta {
     width: 100%;
-    background: rgba(15, 23, 42, 0.70);
-    border: 1px solid rgba(255,255,255,0.12);
-    color: #e5e7eb;
-    border-radius: 14px;
-    padding: 10px 12px;
+
+    /* CAMBIO: Fondo neutro semitransparente (funciona en dark y light) */
+    background: rgba(125, 125, 125, 0.1);
+    border: 1px solid var(--border-color); /* */
+    color: var(--text-primary); /* */
+
+    border-radius: 10px;
+    padding: 12px;
+    font-family: inherit;
+    font-size: 14px;
     outline: none;
+    transition: all 0.2s;
     resize: vertical;
 }
+
+.modal .input:focus,
+.modal .ta:focus {
+    border-color: #6366f1;
+    background: var(--bg-app); /* Ligeramente diferente al foco */
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.ta { min-height: 100px; }
 
 .modal-actions {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
-    margin-top: 14px;
+    margin-top: 8px;
+}
+
+/* Estilos para Botones dentro del modal */
+.btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    background: #6366f1;
+    color: white;
+}
+.btn:hover { background: #4f46e5; transform: translateY(-1px); }
+.btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+
+/* Botón fantasma (Cancelar) */
+.btn.ghost {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+.btn.ghost:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+/* PRIORITY SELECTOR */
+.priority-selector {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.priority-btn {
+    flex: 1;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.priority-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.priority-btn.active {
+    background: rgba(99, 102, 241, 0.1); /* Tinted background */
+    border-color: #6366f1;
+    color: #6366f1;
+    font-weight: 600;
+}
+
+.priority-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+/* TAGS CONTAINER */
+.tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.tag-btn {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    opacity: 0.6;
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+}
+
+.tag-btn:hover {
+    opacity: 0.8;
+}
+
+.tag-btn.selected {
+    opacity: 1;
+    border-color: currentColor; /* Uses the text color as border */
+}
+
+/* Estilos para el Chat de Comentarios */
+.divider {
+    border: none;
+    border-top: 1px solid var(--border-color, #e5e7eb);
+    margin: 16px 0;
+}
+.comments-list {
+    max-height: 220px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-right: 4px;
+}
+.comment-item {
+    display: flex;
+    gap: 10px;
+    font-size: 14px;
+}
+.comment-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: #4b5563;
+    overflow: hidden;
+    flex-shrink: 0;
+    font-size: 12px;
+}
+.comment-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.comment-header {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    margin-bottom: 4px;
+}
+.comment-author {
+    font-weight: 600;
+    color: #111827;
+}
+.comment-time {
+    font-size: 11px;
+    color: #6b7280;
+}
+.comment-text {
+    color: #374151;
+    background: #f3f4f6;
+    padding: 8px 12px;
+    border-radius: 0 12px 12px 12px;
+    line-height: 1.4;
+    white-space: pre-wrap; /* Respeta los saltos de línea */
+}
+.new-comment {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+}
+.comment-ta {
+    width: 100%;
+    min-height: 50px;
+    resize: vertical;
+    font-size: 14px;
+}
+.no-comments {
+    font-size: 13px;
+    color: #6b7280;
+    text-align: center;
+    padding: 10px 0;
+}
+.btn-small {
+    padding: 6px 14px;
+    font-size: 13px;
 }

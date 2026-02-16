@@ -14,20 +14,21 @@ class AuthenticationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->post('/login', [
+        $response = $this->postJson('/api/login', [
             'email' => $user->email,
             'password' => 'password',
         ]);
 
         $this->assertAuthenticated();
-        $response->assertNoContent();
+        // Since it's an API, check the response structure, e.g., token
+        $response->assertOk();
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void
     {
         $user = User::factory()->create();
 
-        $this->post('/login', [
+        $this->postJson('/api/login', [
             'email' => $user->email,
             'password' => 'wrong-password',
         ]);
@@ -39,7 +40,7 @@ class AuthenticationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->post('/logout');
+        $response = $this->actingAs($user)->postJson('/api/logout');
 
         $this->assertGuest();
         $response->assertNoContent();

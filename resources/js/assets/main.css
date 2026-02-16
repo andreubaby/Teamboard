@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "./styles/00-reset.css";
 @import "./styles/01-layout.css";
 @import "./styles/02-sidebar.css";
@@ -7,3 +8,40 @@
 @import "./styles/06-card.css";
 @import "./styles/07-modal.css";
 @import "./styles/08-responsive.css";
+
+/* DEFINICIÓN DE VARIABLES DE COLOR */
+:root {
+    /* --- MODO OSCURO (Por defecto) --- */
+    --bg-app: #0f172a;          /* Fondo de la pantalla */
+    --bg-sidebar: #1e293b;      /* Sidebar */
+    --bg-column: #1e293b;       /* Fondo de la COLUMNA */
+    --bg-card: #334155;         /* Fondo de la TARJETA (Más claro que la columna) */
+
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+
+    --border-color: rgba(255, 255, 255, 0.1);
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* --- MODO CLARO (Sobreescribe las variables) --- */
+body.light-mode {
+    /* --- MODO CLARO (Professional Look) --- */
+    --bg-app: #ffffff;          /* Fondo blanco puro o gris muy claro */
+    --bg-sidebar: #f8fafc;      /* Sidebar gris muy pálido */
+    --bg-column: #f1f5f9;       /* Columna gris suave (para diferenciar del fondo) */
+    --bg-card: #ffffff;         /* Tarjeta blanca pura (para resaltar sobre la columna) */
+
+    --text-primary: #0f172a;    /* Texto casi negro (buen contraste) */
+    --text-secondary: #64748b;  /* Texto gris medio */
+
+    --border-color: #e2e8f0;    /* Bordes sutiles */
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.1); /* Sombra suave */
+}
+
+/* APLICACIÓN DE VARIABLES AL BODY */
+body {
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    transition: background-color 0.3s, color 0.3s; /* Transición suave */
+}

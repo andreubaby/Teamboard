@@ -17,6 +17,8 @@
                 :project="project"
                 :disableAddColumn="!project"
                 @add-column="createColumn"
+                @refresh-board="() => loadBoard(project.id)"
+                @filter-user="setFilterUser"
             />
 
             <main class="content">
@@ -27,17 +29,16 @@
                 </div>
 
                 <KanbanBoard
-                    :columns="columns"
+                    :columns="filteredColumns"
                     :addingColumnId="addingColumnId"
                     :addDraft="addDraft"
                     :isOver="isOver"
+
                     :isOverEnd="isOverEnd"
                     :draggingColumnId="draggingColumnId"
-                    @col-dragstart="onColumnDragStart"
-                    @col-dragend="onColumnDragEnd"
-                    @col-dragover="({ index, e }) => onColumnDragOver(index, e)"
-                    @col-drop="onColumnDrop"
+                    @col-pointerdown="({ e, columnId, boardEl }) => onColumnPointerDown(e, columnId, boardEl)"
                     @toggle-add="toggleAdd"
+                    @generate-ai="handleAiGeneration"
                     @update-draft="({ columnId, value }) => updateDraft(columnId, value)"
                     @create-card="createCard"
                     @dragover-column="({ column, e }) => onDragOverColumn(column, e)"
@@ -58,6 +59,13 @@
             :saving="edit.saving"
             v-model:title="edit.title"
             v-model:description="edit.description"
+            v-model:priority="edit.priority"
+            v-model:tagIds="edit.tagIds"
+            v-model:assigneeId="edit.assigneeId"
+            :availableTags="availableTags"
+            :availableMembers="[project?.owner, ...(project?.members || [])].filter(Boolean)"
+            :comments="edit.comments"
+            @addComment="sendComment"
             @close="closeEdit"
             @save="saveEdit"
         />
@@ -69,8 +77,9 @@ import SidebarBoards from "../components/layout/SidebarBoards.vue";
 import BoardTopbar from "../components/layout/BoardTopbar.vue";
 import KanbanBoard from "../components/kanban/KanbanBoard.vue";
 import CardModalEdit from "../components/modals/CardModalEdit.vue";
+import { http } from "../lib/http";
 
-import { onMounted, onBeforeUnmount, ref, watch } from "vue";
+import { onMounted, onBeforeUnmount, ref, watch, computed } from "vue"; // Import computed
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "../stores/auth";
 
@@ -84,8 +93,20 @@ const router = useRouter();
 const route = useRoute();
 const auth = useAuthStore();
 
-const sidebarCollapsed = ref(false);
+// --- LÓGICA DE PERSISTENCIA DEL SIDEBAR ---
+// 1. Leemos el estado guardado (si existe)
+const storedState = localStorage.getItem('harvis_sb_collapsed');
 
+// 2. Inicializamos: si es 'true' empieza cerrado, si no, abierto.
+// (Aquí he borrado la línea duplicada que tenías antes)
+const sidebarCollapsed = ref(storedState === 'true');
+
+// 3. Vigilamos los cambios para guardar la preferencia
+watch(sidebarCollapsed, (newValue) => {
+    localStorage.setItem('harvis_sb_collapsed', newValue);
+});
+
+// --- AUTH ---
 async function ensureAuth() {
     if (!auth.user) await auth.fetchUser();
     if (!auth.user) {
@@ -119,16 +140,10 @@ const {
     subscribeBoardsRealtime,
     subscribeProjectRealtime,
     disconnectAll,
-} = useBoardRealtime({ auth, projects, project, columns });
+} = useBoardRealtime({ auth, projects, project, columns, loadBoard });
 
 // Column DnD
-const {
-    draggingColumnId,
-    onColumnDragStart,
-    onColumnDragEnd,
-    onColumnDragOver,
-    onColumnDrop,
-} = useColumnDnD({ project, columns });
+const { draggingColumnId, onColumnPointerDown } = useColumnDnD({ project, columns });
 
 // Card DnD + create
 const {
@@ -149,7 +164,23 @@ const {
 } = useCardDnD({ columns });
 
 // Card editor
-const { edit, openEdit, closeEdit, saveEdit, removeCard } = useCardEditor({ columns });
+const { edit, openEdit, closeEdit, saveEdit, removeCard, sendComment } = useCardEditor({ columns });
+
+// --- FILTRO DE USUARIO ---
+const selectedUserId = ref(null);
+
+function setFilterUser(userId) {
+    selectedUserId.value = userId;
+}
+
+const filteredColumns = computed(() => {
+    if (!selectedUserId.value) return columns.value;
+
+    return columns.value.map(col => ({
+        ...col,
+        cards: col.cards.filter(card => card.assignee_id === selectedUserId.value)
+    }));
+});
 
 // Route -> load board + subscribe project channel
 watch(
@@ -164,37 +195,78 @@ watch(
         await loadBoard(projectId);
 
         ensureEcho();
-        if (project.value?.id) subscribeProjectRealtime(project.value.id);
+        if (project.value) subscribeProjectRealtime(project.value.id);
     },
     { immediate: true }
 );
 
+// Initial load
 onMounted(async () => {
+    // 1. Verificamos sesión
     const ok = await ensureAuth();
     if (!ok) return;
 
     loading.value = true;
 
-    await loadProjects();
+    // 2. Cargamos proyectos
+    try {
+        await loadProjects();
+    } catch (error) {
+        console.error("Error cargando proyectos. ¿Te falta la migración de 'project_user'?", error);
+    }
 
+    // 3. Conectamos Websockets (¡AQUÍ FALTABA EL ID!)
     ensureEcho();
-    if (auth.user?.id) subscribeBoardsRealtime(auth.user.id);
+    if (auth.user?.id) {
+        subscribeBoardsRealtime(auth.user.id);
+    }
 
+    // 4. Autoseleccionar el primer tablero (¡ESTO HABÍA DESAPARECIDO!)
     if (!route.params.id) {
         const first = projects.value[0];
-        if (first) router.replace({ name: "board", params: { id: first.id } });
-        else {
+        if (first) {
+            router.replace({ name: "board", params: { id: first.id } });
+        } else {
             project.value = null;
             columns.value = [];
         }
     }
 
+    // 5. Finalizamos la carga (¡SÚPER IMPORTANTE!)
     loading.value = false;
 });
-
+// On before unmount, disconnect all realtime subscriptions
 onBeforeUnmount(() => {
     disconnectAll();
 });
 </script>
 
-<style></style>
+<style scoped>
+.page {
+    display: flex;
+    height: 100vh;
+}
+
+.main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.loading {
+    text-align: center;
+    padding: 2rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #888;
+}
+</style>

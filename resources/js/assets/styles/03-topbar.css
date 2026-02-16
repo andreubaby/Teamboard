@@ -1,47 +1,409 @@
+/* styles/03-topbar.css */
+
 .topbar {
+    height: 64px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.1);
     position: sticky;
     top: 0;
-    z-index: 10;
+    z-index: 40;
+}
+
+/* --- Breadcrumbs (Izquierda) --- */
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #cbd5e1;
+    font-weight: 500;
+}
+
+.crumb-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px; height: 24px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.crumb-parent { color: #94a3b8; }
+.crumb-sep { color: #64748b; font-size: 12px; }
+
+.crumb-current {
+    color: white;
+    font-weight: 600;
+    background: rgba(255,255,255,0.05);
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+.crumb-placeholder { opacity: 0.5; font-style: italic; }
+
+/* --- Acciones (Derecha) --- */
+.top-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* Stack de Miembros (Círculos superpuestos) */
+.members-stack {
+    display: flex;
+    align-items: center;
+    margin-right: 8px;
+}
+
+.avatar-circle {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 10px; font-weight: 700; color: white;
+    border: 2px solid #0f172a; /* Mismo color que el fondo de la app para efecto recorte */
+    margin-left: -8px; /* Efecto superpuesto */
+}
+.avatar-circle:first-child { margin-left: 0; }
+
+.add-member-btn {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px dashed rgba(255,255,255,0.3);
+    color: rgba(255,255,255,0.6);
+    margin-left: -8px;
+    z-index: 1;
+    cursor: pointer;
+    display: grid; place-items: center;
+    transition: all 0.2s;
+}
+.add-member-btn:hover { background: rgba(255,255,255,0.1); color: white; border-color: white; }
+
+/* Separador Vertical */
+.divider-v {
+    width: 1px;
+    height: 24px;
+    background: rgba(255,255,255,0.1);
+}
+
+/* Botón Principal de Acción */
+.btn-primary-action {
+    display: flex; align-items: center; gap: 8px;
+    background: #4f46e5; /* Indigo sólido */
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4); /* Glow */
+    transition: all 0.2s;
+}
+
+.btn-primary-action:hover:not(:disabled) {
+    background: #4338ca;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.5);
+}
+
+.btn-primary-action:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #334155;
+    box-shadow: none;
+    color: #94a3b8;
+}
+
+.btn-icon { font-size: 16px; line-height: 0.5; }
+
+/* --- NUEVO: Estilos para Harvis Global --- */
+
+/* Wrapper para posicionar el dropdown */
+.ai-global-wrapper {
+    position: relative;
+    margin-right: 8px;
+}
+
+/* Botón Mágico (Degradado) */
+.btn-ai-global {
+    background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); /* Violeta a Indigo */
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3); /* Glow violeta */
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-ai-global:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
+}
+
+.btn-ai-global.active {
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+    transform: translateY(1px);
+}
+
+/* Dropdown Flotante */
+.ai-dropdown {
+    position: absolute;
+    top: 130%; /* Un poco separado del botón */
+    right: 0;
+    width: 340px;
+    background: #1e293b; /* Slate 800 */
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 10px 40px -5px rgba(0,0,0,0.5); /* Sombra fuerte */
+    z-index: 100;
+
+    /* Animación de entrada */
+    animation: slideInAi 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: top right;
+}
+
+@keyframes slideInAi {
+    from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Input del área de texto */
+.ai-input {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #f8fafc;
+    padding: 10px;
+    border-radius: 8px;
+    resize: none;
+    font-size: 13px;
+    line-height: 1.5;
+    outline: none;
+    font-family: inherit;
+    margin-bottom: 10px;
+    transition: border-color 0.2s;
+}
+
+.ai-input:focus {
+    border-color: #8b5cf6; /* Borde violeta al escribir */
+    background: rgba(0,0,0,0.4);
+}
+
+/* Footer del dropdown */
+.ai-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 16px;
-    padding: 16px 22px;
-    background: rgba(15, 23, 42, 0.55);
-    border-bottom: 1px solid rgba(255,255,255,0.10);
-    backdrop-filter: blur(12px);
-    box-shadow: 0 14px 40px rgba(0,0,0,0.35);
 }
 
-.meta {
-    font-size: 13px;
-    color: rgba(229,231,235,0.75);
-}
-.meta strong {
-    color: rgba(229,231,235,0.95);
+.ai-label {
+    font-size: 10px;
+    font-weight: 800;
+    color: #a78bfa; /* Violeta claro */
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
 
-.btn {
-    border: 1px solid rgba(255,255,255,0.14);
-    color: #e5e7eb;
+/* Botón de Ejecutar dentro del dropdown */
+.btn-go {
+    background: #8b5cf6;
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
-    border-radius: 12px;
-    padding: 9px 14px;
-    background: rgba(255,255,255,0.06);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.22);
-    transition: transform .12s ease, filter .12s ease, border-color .12s ease;
+    transition: background 0.2s;
 }
-.btn:hover {
-    filter: brightness(1.06);
-    border-color: rgba(255,255,255,0.22);
-    transform: translateY(-1px);
+
+.btn-go:hover:not(:disabled) {
+    background: #7c3aed;
 }
-.btn:disabled {
-    opacity: .45;
+
+.btn-go:disabled {
+    opacity: 0.5;
     cursor: not-allowed;
-    transform: none;
+    background: #4b5563;
 }
-.btn.ghost {
-    background: transparent;
-    box-shadow: none;
+
+/* Filter Badge */
+.filter-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(56, 189, 248, 0.2);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    color: #bae6fd;
+    padding: 4px 12px;
+    border-radius: 9999px; /* Pill shape */
+    font-size: 11px;
+    font-weight: 600;
+    margin-right: 8px;
+    white-space: nowrap;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+.clear-filter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px; height: 16px;
+    background: rgba(56, 189, 248, 0.3);
+    border-radius: 50%;
+    border: none;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 0 1px 0; /* Slight visual adjustment */
+    transition: background 0.2s;
+}
+
+.clear-filter:hover {
+    background: rgba(56, 189, 248, 0.6);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.avatar-circle.active {
+    border-color: #38bdf8; /* Sky blue matching filter badge */
+    z-index: 20 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.4);
+}
+
+.avatar-circle:hover {
+    z-index: 20 !important;
+    transform: translateY(-2px);
+    cursor: pointer;
+}
+
+/* Invite Dropdown */
+.invite-dropdown {
+    position: absolute;
+    top: 130%;
+    left: 0;
+    width: 260px;
+    background: #1e293b;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 10px 40px -5px rgba(0,0,0,0.5);
+    z-index: 100;
+    animation: slideInAi 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: top left;
+}
+
+.invite-input {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #f8fafc;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    outline: none;
+    margin-bottom: 8px;
+}
+
+.invite-input:focus {
+    border-color: #38bdf8;
+    background: rgba(0,0,0,0.4);
+}
+
+.invite-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.btn-invite-confirm {
+    background: #38bdf8;
+    color: #0f172a;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-invite-confirm:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 1. Arregla el avatar gigante en el Topbar */
+.members-stack img,
+.avatar-circle img {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 50% !important;
+    object-fit: cover;
+}
+
+/* 2. Arregla cualquier otra imagen de avatar en la app (como las tarjetas) */
+img[src*="ui-avatars.com"],
+.card img.avatar,
+.assignee-avatar img {
+    border-radius: 50% !important;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+}
+
+/* Wrapper del avatar para posicionar el botón de borrar */
+.member-avatar-wrapper {
+    position: relative;
+}
+
+/* Botón de borrar miembro (X) */
+.remove-member-btn {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 14px;
+    height: 14px;
+    background: #ef4444; /* Rojo */
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 8px;
+    font-weight: bold;
+    display: none; /* Oculto por defecto */
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 30;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    transition: transform 0.2s, background 0.2s;
+}
+
+.remove-member-btn:hover {
+    background: #dc2626; /* Rojo más oscuro */
+    transform: scale(1.1);
+}
+
+/* Mostrar la 'X' solo al hacer hover sobre el avatar */
+.member-avatar-wrapper:hover .remove-member-btn {
+    display: flex;
 }

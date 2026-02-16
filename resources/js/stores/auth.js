@@ -10,7 +10,6 @@ export const useAuthStore = defineStore("auth", {
 
     actions: {
         async csrf() {
-            // Necesario para Sanctum cookie-based auth
             await http.get("/sanctum/csrf-cookie");
         },
 
@@ -20,12 +19,10 @@ export const useAuthStore = defineStore("auth", {
                 this.user = data;
                 return data;
             } catch (e) {
-                // 401 = NO logueado (normal al cargar la app)
                 if (e?.response?.status === 401) {
                     this.user = null;
                     return null;
                 }
-                // cualquier otro error sí es importante
                 throw e;
             }
         },
@@ -43,15 +40,44 @@ export const useAuthStore = defineStore("auth", {
                     remember,
                 });
 
-                // tras login, esto debe devolver 200
                 await this.fetchUser();
-
                 return true;
             } catch (e) {
                 const msg =
                     e?.response?.data?.message ??
                     (e?.response?.status ? `HTTP ${e.response.status}` : "Login error");
                 this.error = msg;
+                throw e;
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // --- NUEVA FUNCIÓN DE REGISTRO ---
+        async register(name, email, password, password_confirmation) {
+            this.loading = true;
+            this.error = null;
+
+            try {
+                await this.csrf();
+
+                await http.post("/api/register", {
+                    name,
+                    email,
+                    password,
+                    password_confirmation,
+                });
+
+                await this.fetchUser();
+                return true;
+            } catch (e) {
+                // Laravel devuelve 422 si la validación falla (ej. email ya existe, password corto)
+                if (e?.response?.status === 422 && e.response.data.errors) {
+                    const errors = e.response.data.errors;
+                    this.error = Object.values(errors)[0][0]; // Mostramos el primer error
+                } else {
+                    this.error = e?.response?.data?.message || "Error al registrarse";
+                }
                 throw e;
             } finally {
                 this.loading = false;
@@ -67,7 +93,6 @@ export const useAuthStore = defineStore("auth", {
                 this.user = null;
                 return true;
             } catch (e) {
-                // si ya no hay sesión, lo tratamos como logout ok
                 if (e?.response?.status === 401) {
                     this.user = null;
                     return true;
