@@ -14,11 +14,16 @@ use Illuminate\Support\Facades\Log;
 
 class CardController extends Controller
 {
+    private function checkProjectAccess($project, $userId) {
+        $isMember = $project->owner_id === $userId || $project->members->contains('id', $userId);
+        abort_unless($isMember, 403);
+    }
+
     // GET /api/cards/{card} (Faltaba este método para cargar datos en el modal)
     public function show(Request $request, Card $card)
     {
-        $column = BoardColumn::with('project')->findOrFail($card->board_column_id);
-        abort_unless($column->project->owner_id === $request->user()->id, 403);
+        $column = BoardColumn::with('project.members')->findOrFail($card->board_column_id);
+        $this->checkProjectAccess($column->project, $request->user()->id);
 
         return response()->json([
             'card' => $card->load('tags'),
@@ -30,24 +35,38 @@ class CardController extends Controller
     {
         $data = $request->validate([
             'board_column_id' => ['required', 'integer', 'exists:board_columns,id'],
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'priority' => ['nullable', 'string', 'in:low,normal,high,urgent'],
+            'title'           => ['required', 'string', 'max:255'],
+            'description'     => ['nullable', 'string'],
+            'priority'        => ['nullable', 'string', 'in:low,normal,high,urgent'],
+            'assignee_id'     => ['nullable', 'integer', 'exists:users,id'],
         ]);
 
-        $column = BoardColumn::with('project')->findOrFail($data['board_column_id']);
-        abort_unless($column->project->owner_id === $request->user()->id, 403);
+        $column = BoardColumn::with('project.members')->findOrFail($data['board_column_id']);
+        $this->checkProjectAccess($column->project, $request->user()->id);
+
+        // Validate assignee is member or owner
+        if (!empty($data['assignee_id'])) {
+            $isOwner = $column->project->owner_id === (int) $data['assignee_id'];
+            $isMember = $column->project->members->contains('id', (int) $data['assignee_id']);
+            if (!$isOwner && !$isMember) {
+                 return response()->json(['message' => 'Assignee must be a project member'], 422);
+            }
+        }
+
 
         $nextPos = (int) Card::where('board_column_id', $column->id)->max('position');
         $nextPos = ($nextPos || $nextPos === 0) ? $nextPos + 1 : 0;
 
         $card = Card::create([
             'board_column_id' => $column->id,
-            'title' => $data['title'],
-            'description' => $data['description'] ?? null,
-            'position' => $nextPos,
-            'priority' => $data['priority'] ?? 'normal',
+            'title'           => $data['title'],
+            'description'     => $data['description'] ?? null,
+            'position'        => $nextPos,
+            'priority'        => $data['priority'] ?? 'normal',
+            'assignee_id'     => $data['assignee_id'] ?? null,
         ]);
+
+        $card->load(['tags', 'assignee']);
 
         $senderId = (int) $request->user()->id;
 
@@ -56,14 +75,21 @@ class CardController extends Controller
             broadcast(new \App\Events\CardCreated(
                 (int) $column->project_id,
                 [
-                    'id' => (int) $card->id,
-                    'title' => $card->title,
-                    'description' => $card->description,
-                    'position' => (int) $card->position,
+                    'id'              => (int) $card->id,
+                    'title'           => $card->title,
+                    'description'     => $card->description,
+                    'position'        => (int) $card->position,
                     'board_column_id' => (int) $card->board_column_id,
-                    'priority' => $card->priority,
-                    'tags' => [],
-                    'senderId' => $senderId,
+                    'priority'        => $card->priority,
+                    'tags'            => [],
+                    'assignee_id'     => $card->assignee_id,
+                    'assignee'        => $card->assignee ? [
+                        'id' => $card->assignee->id,
+                        'name' => $card->assignee->name,
+                        'email' => $card->assignee->email,
+                        'avatar_url' => $card->assignee->avatar_url,
+                    ] : null,
+                    'senderId'        => $senderId,
                 ],
                 (int) $column->id,
                 $senderId
@@ -74,13 +100,20 @@ class CardController extends Controller
 
         return response()->json([
             'card' => [
-                'id' => $card->id,
-                'title' => $card->title,
-                'description' => $card->description,
-                'position' => $card->position,
+                'id'              => $card->id,
+                'title'           => $card->title,
+                'description'     => $card->description,
+                'position'        => $card->position,
                 'board_column_id' => $card->board_column_id,
-                'priority' => $card->priority,
-                'tags' => [],
+                'priority'        => $card->priority,
+                'tags'            => [],
+                'assignee_id'     => $card->assignee_id,
+                'assignee'        => $card->assignee ? [
+                    'id' => $card->assignee->id,
+                    'name' => $card->assignee->name,
+                    'email' => $card->assignee->email,
+                    'avatar_url' => $card->assignee->avatar_url,
+                ] : null,
             ],
         ], 201);
     }
@@ -93,14 +126,14 @@ class CardController extends Controller
             'to_position'        => ['required', 'integer', 'min:0'],
         ]);
 
+        $fromColumn = BoardColumn::with('project.members')->findOrFail($card->board_column_id);
+        $this->checkProjectAccess($fromColumn->project, $request->user()->id);
+
         $toColumnId = (int) $data['to_board_column_id'];
         $toPos      = (int) $data['to_position'];
 
-        $fromColumn = BoardColumn::with('project')->findOrFail($card->board_column_id);
-        abort_unless($fromColumn->project->owner_id === $request->user()->id, 403);
-
-        $toColumn = BoardColumn::with('project')->findOrFail($toColumnId);
-        abort_unless($toColumn->project->owner_id === $request->user()->id, 403);
+        $toColumn = BoardColumn::with('project.members')->findOrFail($toColumnId);
+        $this->checkProjectAccess($toColumn->project, $request->user()->id);
 
         $fromColumnId = (int) $card->board_column_id;
         $projectId    = (int) $toColumn->project_id;
@@ -173,23 +206,34 @@ class CardController extends Controller
     // PATCH /api/cards/{card}
     public function update(Request $request, Card $card)
     {
-        // 1. Validate including priority and tags array
+        // 1. Validate including priority, tags array, and assignee_id
         $data = $request->validate([
             'title'       => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'priority'    => ['nullable', 'string', 'in:low,normal,high,urgent'],
             'tags'        => ['nullable', 'array'],
             'tags.*'      => ['integer', 'exists:tags,id'],
+            'assignee_id' => ['nullable', 'integer', 'exists:users,id'],
         ]);
 
-        $column = BoardColumn::with('project')->findOrFail($card->board_column_id);
-        abort_unless($column->project->owner_id === $request->user()->id, 403);
+        $column = BoardColumn::with('project.members')->findOrFail($card->board_column_id);
+        $this->checkProjectAccess($column->project, $request->user()->id);
+
+        // Validate assignee is member or owner
+        if (array_key_exists('assignee_id', $data) && !empty($data['assignee_id'])) {
+             $isOwner = $column->project->owner_id === (int) $data['assignee_id'];
+             $isMember = $column->project->members->contains('id', (int) $data['assignee_id']);
+             if (!$isOwner && !$isMember) {
+                  return response()->json(['message' => 'Assignee must be a project member'], 422);
+             }
+        }
 
         // 2. Update basic fields
         $updateData = [];
         if (isset($data['title'])) $updateData['title'] = $data['title'];
         if (array_key_exists('description', $data)) $updateData['description'] = $data['description'];
         if (isset($data['priority'])) $updateData['priority'] = $data['priority'];
+        if (array_key_exists('assignee_id', $data)) $updateData['assignee_id'] = $data['assignee_id'];
 
         $card->update($updateData);
 
@@ -198,11 +242,11 @@ class CardController extends Controller
             $card->tags()->sync($data['tags']);
         }
 
-        // Reload tags to return full object
-        $card->load('tags');
+        // Reload tags and assignee to return full object
+        $card->load(['tags', 'assignee']);
 
         try {
-            // Broadcast with updated data including priority and tags
+            // Broadcast with updated data including priority, tags, and assignee
             broadcast(new CardUpdated($column->project_id, $card))->toOthers();
         } catch (\Exception $e) {
             Log::error("Error broadcast CardUpdated: " . $e->getMessage());
@@ -221,8 +265,8 @@ class CardController extends Controller
     // DELETE /api/cards/{card}
     public function destroy(Request $request, Card $card)
     {
-        $column = BoardColumn::with('project')->findOrFail($card->board_column_id);
-        abort_unless($column->project->owner_id === $request->user()->id, 403);
+        $column = BoardColumn::with('project.members')->findOrFail($card->board_column_id);
+        $this->checkProjectAccess($column->project, $request->user()->id);
 
         $columnId = (int) $card->board_column_id;
         $deletedPos = (int) $card->position;
@@ -259,8 +303,8 @@ class CardController extends Controller
             'tag_name' => 'required|string|exists:tags,name',
         ]);
 
-        $column = BoardColumn::with('project')->findOrFail($card->board_column_id);
-        abort_unless($column->project->owner_id === $request->user()->id, 403);
+        $column = BoardColumn::with('project.members')->findOrFail($card->board_column_id);
+        $this->checkProjectAccess($column->project, $request->user()->id);
 
         $tag = Tag::where('name', $request->tag_name)->firstOrFail();
         $card->tags()->syncWithoutDetaching([$tag->id]);
@@ -278,8 +322,8 @@ class CardController extends Controller
     // NEW: DELETE /api/cards/{card}/tags/{tag}
     public function removeTag(Request $request, Card $card, Tag $tag)
     {
-        $column = BoardColumn::with('project')->findOrFail($card->board_column_id);
-        abort_unless($column->project->owner_id === $request->user()->id, 403);
+        $column = BoardColumn::with('project.members')->findOrFail($card->board_column_id);
+        $this->checkProjectAccess($column->project, $request->user()->id);
 
         $card->tags()->detach($tag->id);
 

@@ -241,3 +241,169 @@
     cursor: not-allowed;
     background: #4b5563;
 }
+
+/* Filter Badge */
+.filter-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(56, 189, 248, 0.2);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    color: #bae6fd;
+    padding: 4px 12px;
+    border-radius: 9999px; /* Pill shape */
+    font-size: 11px;
+    font-weight: 600;
+    margin-right: 8px;
+    white-space: nowrap;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+.clear-filter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px; height: 16px;
+    background: rgba(56, 189, 248, 0.3);
+    border-radius: 50%;
+    border: none;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 0 1px 0; /* Slight visual adjustment */
+    transition: background 0.2s;
+}
+
+.clear-filter:hover {
+    background: rgba(56, 189, 248, 0.6);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.avatar-circle.active {
+    border-color: #38bdf8; /* Sky blue matching filter badge */
+    z-index: 20 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.4);
+}
+
+.avatar-circle:hover {
+    z-index: 20 !important;
+    transform: translateY(-2px);
+    cursor: pointer;
+}
+
+/* Invite Dropdown */
+.invite-dropdown {
+    position: absolute;
+    top: 130%;
+    left: 0;
+    width: 260px;
+    background: #1e293b;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 10px 40px -5px rgba(0,0,0,0.5);
+    z-index: 100;
+    animation: slideInAi 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: top left;
+}
+
+.invite-input {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #f8fafc;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    outline: none;
+    margin-bottom: 8px;
+}
+
+.invite-input:focus {
+    border-color: #38bdf8;
+    background: rgba(0,0,0,0.4);
+}
+
+.invite-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.btn-invite-confirm {
+    background: #38bdf8;
+    color: #0f172a;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-invite-confirm:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 1. Arregla el avatar gigante en el Topbar */
+.members-stack img,
+.avatar-circle img {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 50% !important;
+    object-fit: cover;
+}
+
+/* 2. Arregla cualquier otra imagen de avatar en la app (como las tarjetas) */
+img[src*="ui-avatars.com"],
+.card img.avatar,
+.assignee-avatar img {
+    border-radius: 50% !important;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+}
+
+/* Wrapper del avatar para posicionar el botón de borrar */
+.member-avatar-wrapper {
+    position: relative;
+}
+
+/* Botón de borrar miembro (X) */
+.remove-member-btn {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 14px;
+    height: 14px;
+    background: #ef4444; /* Rojo */
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 8px;
+    font-weight: bold;
+    display: none; /* Oculto por defecto */
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 30;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    transition: transform 0.2s, background 0.2s;
+}
+
+.remove-member-btn:hover {
+    background: #dc2626; /* Rojo más oscuro */
+    transform: scale(1.1);
+}
+
+/* Mostrar la 'X' solo al hacer hover sobre el avatar */
+.member-avatar-wrapper:hover .remove-member-btn {
+    display: flex;
+}

@@ -54,3 +54,13 @@ export async function apiMoveCard(cardId, toColumnId, toPosition) {
         to_position: toPosition,
     });
 }
+
+export async function apiRemoveMember(projectId, userId) {
+    const res = await http.delete(`/api/projects/${projectId}/members/${userId}`);
+    return res.data;
+}
+
+export async function apiAddComment(cardId, content) {
+    const { data } = await http.post(`/api/cards/${cardId}/comments`, { content });
+    return data.comment;
+}

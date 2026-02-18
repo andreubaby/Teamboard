@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Card extends Model
 {
-    protected $fillable = ['board_column_id', 'title', 'description', 'position', 'priority'];
+    protected $fillable = ['board_column_id', 'title', 'description', 'position', 'priority', 'assignee_id'];
 
     public function tags()
     {
@@ -17,5 +17,16 @@ class Card extends Model
     public function column(): BelongsTo
     {
         return $this->belongsTo(BoardColumn::class, 'board_column_id');
+    }
+
+    public function assignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assignee_id');
+    }
+
+    public function comments()
+    {
+        // Traemos los comentarios ordenados del más antiguo al más nuevo
+        return $this->hasMany(Comment::class)->oldest();
     }
 }

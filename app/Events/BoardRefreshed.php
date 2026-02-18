@@ -23,9 +23,11 @@ class BoardRefreshed implements ShouldBroadcastNow
         $this->project_id = $project_id;
     }
 
-    public function broadcastOn()
+    public function broadcastOn(): array
     {
-        return new PrivateChannel('project.' . $this->project_id);
+        return [
+            new PrivateChannel('project.' . $this->project_id)
+        ];
     }
 
     public function broadcastAs()

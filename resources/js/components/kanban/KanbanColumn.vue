@@ -88,10 +88,16 @@
                 </div>
 
                 <div class="card-footer-meta">
-                    <div class="meta-date">
-                        📅 24 Oct
+                    <div class="meta-date"></div> <!-- De momento vacío o fecha creación -->
+
+                    <div class="mini-avatar"
+                         v-if="card.assignee"
+                         :title="'Asignado a ' + card.assignee.name"
+                         :class="{ 'has-img': card.assignee.avatar_url }"
+                    >
+                        <img v-if="card.assignee.avatar_url" :src="card.assignee.avatar_url" :alt="card.assignee.name">
+                        <span v-else>{{ getInitials(card.assignee.name) }}</span>
                     </div>
-                    <div class="mini-avatar" title="Asignado a JM">JM</div>
                 </div>
             </div>
 
@@ -136,6 +142,11 @@ const emit = defineEmits([
     // ✅ Nuevo evento para la IA
     "generate-ai"
 ]);
+
+function getInitials(name) {
+    if (!name) return "?";
+    return name.substring(0, 2).toUpperCase();
+}
 
 // --- Lógica IA ---
 const aiMode = ref(false);

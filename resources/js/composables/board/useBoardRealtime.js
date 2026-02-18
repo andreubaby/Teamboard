@@ -11,7 +11,6 @@ export function useBoardRealtime({ auth, projects, project, columns, loadBoard }
     function ensureEcho() {
         if (!echoRef.value) {
             echoRef.value = makeEcho();
-            // Inyectamos el Socket ID para evitar que los eventos reboten a nosotros mismos
             attachEchoToHttp(echoRef.value);
         }
     }
@@ -47,18 +46,16 @@ export function useBoardRealtime({ auth, projects, project, columns, loadBoard }
         disconnectProjectChannel();
         subscribedProjectId = projectId;
 
-        // DEBUG: Escucha TODO para ver si llegan los eventos (Míralo en la consola F12)
-        // Puedes borrar esto cuando ya funcione perfecto.
-
         echoRef.value
             .private(`project.${projectId}`)
-            // Nota el punto '.' al inicio, coincide con broadcastAs()
             .listen(".CardCreated", (e) => applyRemoteCardCreated(e))
             .listen(".CardMoved", (e) => applyRemoteCardMoved(e))
             .listen(".ColumnCreated", (e) => applyRemoteColumnCreated(e))
             .listen(".ColumnReordered", (e) => applyRemoteColumnReordered(e))
             .listen(".CardUpdated", (e) => applyRemoteCardUpdated(e))
             .listen(".CardDeleted", (e) => applyRemoteCardDeleted(e))
+            // 👇 NUEVO: Escuchamos cuando se añade un comentario
+            .listen(".CommentAdded", (e) => applyRemoteCommentAdded(e))
             .listen(".BoardRefreshed", async () => {
                 console.log("♻️ BoardRefreshed recibido. Recargando...");
                 if (loadBoard && subscribedProjectId) {
@@ -144,7 +141,11 @@ export function useBoardRealtime({ auth, projects, project, columns, loadBoard }
             board_column_id: Number(colId),
             tags: payload.tags || [],
             priority: payload.priority || 'normal',
+            assignee_id: payload.assignee_id ?? null,
+            assignee: payload.assignee ?? null,
+            comments: payload.comments || [], // 👇 AÑADIDO: Preparamos el array de comentarios
         });
+
         normalizePositions(col);
     }
 
@@ -158,7 +159,6 @@ export function useBoardRealtime({ auth, projects, project, columns, loadBoard }
         let fromCol = null;
         let cardObj = null;
 
-        // 1. Buscar en origen
         for (const col of columns.value) {
             const found = col.cards.find(c => Number(c.id) === Number(cardId));
             if (found) {
@@ -170,12 +170,10 @@ export function useBoardRealtime({ auth, projects, project, columns, loadBoard }
 
         if (!fromCol || !cardObj) return;
 
-        // 2. Sacar de origen
         const idx = fromCol.cards.indexOf(cardObj);
         if (idx > -1) fromCol.cards.splice(idx, 1);
         normalizePositions(fromCol);
 
-        // 3. Meter en destino
         const destCol = columns.value.find((c) => Number(c.id) === Number(toColId));
         if (destCol) {
             cardObj.board_column_id = Number(toColId);
@@ -191,23 +189,19 @@ export function useBoardRealtime({ auth, projects, project, columns, loadBoard }
         const cardData = e.card ?? e;
         if (!cardData || !cardData.id) return;
 
+        console.log("📡 EVENTO RECIBIDO (CardUpdated):", cardData);
+
         for (const col of columns.value) {
             const card = col.cards.find(c => Number(c.id) === Number(cardData.id));
             if (card) {
-                if (cardData.title !== undefined) card.title = cardData.title;
-                if (cardData.description !== undefined) card.description = cardData.description;
-                if (cardData.priority !== undefined) card.priority = cardData.priority;
-                if (cardData.tags !== undefined) card.tags = cardData.tags;
-                if (cardData.position !== undefined) card.position = cardData.position;
+                Object.assign(card, cardData);
                 return;
             }
         }
     }
 
     function applyRemoteCardDeleted(e) {
-        // Obtenemos el ID de forma robusta
         const cardId = e.cardId ?? e.card_id ?? e.id;
-
         if (!cardId) return;
 
         console.log("🗑️ Aplicando borrado remoto para ID:", cardId);
@@ -217,7 +211,27 @@ export function useBoardRealtime({ auth, projects, project, columns, loadBoard }
             if (idx !== -1) {
                 col.cards.splice(idx, 1);
                 normalizePositions(col);
-                return; // Importante salir una vez encontrado
+                return;
+            }
+        }
+    }
+
+    // 👇 AÑADIDO: Manejador para nuevos comentarios recibidos por WebSocket
+    function applyRemoteCommentAdded(e) {
+        const comment = e.comment;
+        if (!comment || !comment.card_id) return;
+
+        console.log("💬 EVENTO RECIBIDO (CommentAdded):", comment);
+
+        for (const col of columns.value) {
+            const card = col.cards.find(c => Number(c.id) === Number(comment.card_id));
+            if (card) {
+                if (!card.comments) card.comments = [];
+                // Solo lo insertamos si no existe ya en el array (evita duplicados si tú mismo lo enviaste)
+                if (!card.comments.some(c => Number(c.id) === Number(comment.id))) {
+                    card.comments.push(comment);
+                }
+                return;
             }
         }
     }

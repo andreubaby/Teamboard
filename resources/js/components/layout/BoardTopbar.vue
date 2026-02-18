@@ -11,10 +11,65 @@
         </div>
 
         <div class="top-actions">
-            <div class="members-stack" v-if="project">
-                <div class="avatar-circle" style="background: #3b82f6; z-index:3">JM</div>
-                <div class="avatar-circle" style="background: #10b981; z-index:2">A</div>
-                <button class="add-member-btn" title="Invitar miembro">+</button>
+            <div class="members-stack" style="position: relative;" v-if="project && project.members">
+
+                <div
+                    class="avatar-circle member-avatar-wrapper"
+                    :title="'Owner: ' + (project.owner?.name || 'Unknown')"
+                    :class="{ active: selectedMemberId === project.owner_id }"
+                    @click="toggleFilter(project.owner_id)"
+                    style="z-index: 10; border: 2px solid #fbbf24;"
+                >
+                    <img v-if="project.owner?.avatar_url" :src="project.owner.avatar_url" alt="Owner" />
+                    <span v-else>{{ getInitials(project.owner?.name) }}</span>
+                </div>
+
+                <div
+                    v-for="(member, idx) in project.members"
+                    :key="member.id"
+                    class="avatar-circle member-avatar-wrapper"
+                    :title="member.name"
+                    :class="{ active: selectedMemberId === member.id }"
+                    @click="toggleFilter(member.id)"
+                    :style="{ zIndex: 9 - idx }"
+                >
+                    <img v-if="member.avatar_url" :src="member.avatar_url" :alt="member.name" />
+                    <span v-else>{{ getInitials(member.name) }}</span>
+
+                    <button
+                        v-if="isOwner"
+                        class="remove-member-btn"
+                        title="Eliminar miembro"
+                        @click.stop="removeMember(member)"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                <button class="add-member-btn" title="Invitar miembro" @click="showInviteInput = !showInviteInput">+</button>
+
+                <div v-if="showInviteInput" class="invite-dropdown">
+                    <input
+                        ref="inviteInputRef"
+                        v-model="inviteEmail"
+                        type="email"
+                        class="invite-input"
+                        placeholder="Email del usuario..."
+                        @keydown.enter="submitInvite"
+                    />
+
+                    <div class="invite-actions">
+                        <button class="btn ghost" @click="showInviteInput = false" style="font-size: 11px; padding: 4px 8px;">Cancelar</button>
+                        <button class="btn-invite-confirm" :disabled="inviting || !inviteEmail" @click="submitInvite">
+                            {{ inviting ? '...' : 'Invitar' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="selectedMemberId" class="filter-badge">
+                Filtrando por usuario
+                <button class="clear-filter" @click="toggleFilter(null)">x</button>
             </div>
 
             <div class="divider-v"></div>
@@ -61,18 +116,83 @@
 </template>
 
 <script setup>
-import { ref, nextTick, watch } from 'vue';
-import { http } from '../../lib/http'; // Asegúrate de que la ruta es correcta según tu estructura
+import { ref, nextTick, watch, computed } from 'vue';
+import { http } from '../../lib/http';
+import { apiRemoveMember } from '../../services/boardApi';
+import { useAuthStore } from '../../stores/auth';
 
 const props = defineProps({
     project: { type: Object, default: null },
     disableAddColumn: { type: Boolean, default: true },
 });
 
-// Añadimos 'refresh-board' para avisar al padre cuando la IA termine
-const emit = defineEmits(["add-column", "refresh-board"]);
+const emit = defineEmits(["add-column", "refresh-board", "filter-user"]);
 
-// --- Lógica de Harvis Global ---
+const auth = useAuthStore();
+const isOwner = computed(() => props.project?.owner_id === auth.user?.id);
+
+// --- User Filtering ---
+const selectedMemberId = ref(null);
+
+function getInitials(name) {
+    if (!name) return "?";
+    return name.substring(0, 2).toUpperCase();
+}
+
+function toggleFilter(userId) {
+    if (selectedMemberId.value === userId) {
+        selectedMemberId.value = null;
+    } else {
+        selectedMemberId.value = userId;
+    }
+    emit('filter-user', selectedMemberId.value);
+}
+
+// --- Member Invitation ---
+const showInviteInput = ref(false);
+const inviteEmail = ref('');
+const inviteInputRef = ref(null);
+const inviting = ref(false);
+
+watch(showInviteInput, async (val) => {
+    if (val) {
+        await nextTick();
+        inviteInputRef.value?.focus();
+    } else {
+        inviteEmail.value = '';
+    }
+});
+
+async function submitInvite() {
+    if (!inviteEmail.value.trim() || !props.project) return;
+
+    inviting.value = true;
+    try {
+        await http.post(`/api/projects/${props.project.id}/members`, { email: inviteEmail.value });
+        alert("Usuario invitado correctamente.");
+        inviteEmail.value = '';
+        showInviteInput.value = false;
+        emit('refresh-board');
+    } catch (e) {
+        alert(e.response?.data?.message || "Error al invitar usuario. Verifica que el email exista.");
+    } finally {
+        inviting.value = false;
+    }
+}
+
+// --- Member Removal ---
+async function removeMember(member) {
+    if (!confirm(`¿Estás seguro de que quieres eliminar a ${member.name} del tablero?`)) return;
+
+    try {
+        await apiRemoveMember(props.project.id, member.id);
+        emit('refresh-board');
+    } catch (e) {
+        alert(e.response?.data?.message || "Error al eliminar miembro.");
+    }
+}
+
+// --- Global AI (Harvis) ---
 const showAiInput = ref(false);
 const prompt = ref('');
 const loading = ref(false);
@@ -98,7 +218,6 @@ function buildAiNotice(payload) {
     return warnings.join("\n");
 }
 
-// Enfocar el textarea al abrir
 watch(showAiInput, async (val) => {
     if (val) {
         await nextTick();
@@ -111,14 +230,12 @@ async function submitGlobalAi() {
 
     loading.value = true;
     try {
-        // Llamada al nuevo endpoint global
         const res = await http.post('/api/ai/global', {
             project_id: props.project.id,
             prompt: prompt.value
         });
 
         if (res.data.action === 'reordered') {
-            // Éxito: Cerramos y avisamos para recargar
             showAiInput.value = false;
             prompt.value = '';
             emit('refresh-board');

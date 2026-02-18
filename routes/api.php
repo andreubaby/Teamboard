@@ -33,6 +33,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/projects/{project}/columns/reorder', [BoardColumnController::class, 'reorder']);
 
     // -------------------------
+    // MEMBERS
+    // -------------------------
+    Route::get('/projects/{project}/members', [App\Http\Controllers\Api\ProjectMemberController::class, 'index']);
+    Route::post('/projects/{project}/members', [App\Http\Controllers\Api\ProjectMemberController::class, 'store']);
+    Route::delete('/projects/{project}/members/{user}', [App\Http\Controllers\Api\ProjectMemberController::class, 'destroy']);
+
+    // -------------------------
     // CARDS
     // -------------------------
     Route::post('/cards', [CardController::class, 'store']);
@@ -41,10 +48,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/cards/{card}', [CardController::class, 'destroy']);
 
     // -------------------------
+    // TAGS (via CardController)
+    // -------------------------
+    Route::get('/tags', [CardController::class, 'getTags']);
+    Route::post('/cards/{card}/tags', [CardController::class, 'addTag']);
+    Route::delete('/cards/{card}/tags/{tag}', [CardController::class, 'removeTag']);
+
+    // -------------------------
     // AI (Harvis)
     // -------------------------
     // ✅ 2. Nueva ruta para generar tareas con IA
     Route::post('/ai/handle', [AiController::class, 'handleRequest']);
     Route::post('/ai/global', [AiController::class, 'handleGlobalRequest']);
+
+    // -------------------------
+    // COMENTARIOS
+    // -------------------------
+    Route::post('/cards/{card}/comments', [App\Http\Controllers\Api\CommentController::class, 'store']);
 
 });

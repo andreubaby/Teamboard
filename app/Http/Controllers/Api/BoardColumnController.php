@@ -15,7 +15,9 @@ class BoardColumnController extends Controller
     // POST /api/projects/{project}/columns
     public function store(Request $request, Project $project)
     {
-        abort_unless($project->owner_id === $request->user()->id, 403);
+        $project->load('members');
+        $isMember = $project->owner_id === $request->user()->id || $project->members->contains('id', $request->user()->id);
+        abort_unless($isMember, 403);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
@@ -53,8 +55,9 @@ class BoardColumnController extends Controller
     // PATCH /api/columns/{column}
     public function update(Request $request, BoardColumn $column)
     {
-        $column->load('project');
-        abort_unless($column->project->owner_id === $request->user()->id, 403);
+        $column->load('project.members');
+        $isMember = $column->project->owner_id === $request->user()->id || $column->project->members->contains('id', $request->user()->id);
+        abort_unless($isMember, 403);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
@@ -74,8 +77,9 @@ class BoardColumnController extends Controller
     // DELETE /api/columns/{column}
     public function destroy(Request $request, BoardColumn $column)
     {
-        $column->load('project');
-        abort_unless($column->project->owner_id === $request->user()->id, 403);
+        $column->load('project.members');
+        $isMember = $column->project->owner_id === $request->user()->id || $column->project->members->contains('id', $request->user()->id);
+        abort_unless($isMember, 403);
 
         $projectId = (int) $column->project_id;
         $deletedPos = (int) $column->position;
@@ -101,7 +105,9 @@ class BoardColumnController extends Controller
      */
     public function reorder(Request $request, Project $project)
     {
-        abort_unless($project->owner_id === $request->user()->id, 403);
+        $project->load('members');
+        $isMember = $project->owner_id === $request->user()->id || $project->members->contains('id', $request->user()->id);
+        abort_unless($isMember, 403);
 
         $data = $request->validate([
             'ordered_ids' => ['required', 'array', 'min:1'],

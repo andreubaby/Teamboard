@@ -18,6 +18,7 @@
                 :disableAddColumn="!project"
                 @add-column="createColumn"
                 @refresh-board="() => loadBoard(project.id)"
+                @filter-user="setFilterUser"
             />
 
             <main class="content">
@@ -28,10 +29,11 @@
                 </div>
 
                 <KanbanBoard
-                    :columns="columns"
+                    :columns="filteredColumns"
                     :addingColumnId="addingColumnId"
                     :addDraft="addDraft"
                     :isOver="isOver"
+
                     :isOverEnd="isOverEnd"
                     :draggingColumnId="draggingColumnId"
                     @col-pointerdown="({ e, columnId, boardEl }) => onColumnPointerDown(e, columnId, boardEl)"
@@ -59,7 +61,11 @@
             v-model:description="edit.description"
             v-model:priority="edit.priority"
             v-model:tagIds="edit.tagIds"
+            v-model:assigneeId="edit.assigneeId"
             :availableTags="availableTags"
+            :availableMembers="[project?.owner, ...(project?.members || [])].filter(Boolean)"
+            :comments="edit.comments"
+            @addComment="sendComment"
             @close="closeEdit"
             @save="saveEdit"
         />
@@ -73,7 +79,7 @@ import KanbanBoard from "../components/kanban/KanbanBoard.vue";
 import CardModalEdit from "../components/modals/CardModalEdit.vue";
 import { http } from "../lib/http";
 
-import { onMounted, onBeforeUnmount, ref, watch } from "vue";
+import { onMounted, onBeforeUnmount, ref, watch, computed } from "vue"; // Import computed
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "../stores/auth";
 
@@ -158,7 +164,23 @@ const {
 } = useCardDnD({ columns });
 
 // Card editor
-const { edit, openEdit, closeEdit, saveEdit, removeCard } = useCardEditor({ columns });
+const { edit, openEdit, closeEdit, saveEdit, removeCard, sendComment } = useCardEditor({ columns });
+
+// --- FILTRO DE USUARIO ---
+const selectedUserId = ref(null);
+
+function setFilterUser(userId) {
+    selectedUserId.value = userId;
+}
+
+const filteredColumns = computed(() => {
+    if (!selectedUserId.value) return columns.value;
+
+    return columns.value.map(col => ({
+        ...col,
+        cards: col.cards.filter(card => card.assignee_id === selectedUserId.value)
+    }));
+});
 
 // Route -> load board + subscribe project channel
 watch(
@@ -173,93 +195,78 @@ watch(
         await loadBoard(projectId);
 
         ensureEcho();
-        if (project.value?.id) subscribeProjectRealtime(project.value.id);
+        if (project.value) subscribeProjectRealtime(project.value.id);
     },
     { immediate: true }
 );
 
+// Initial load
 onMounted(async () => {
+    // 1. Verificamos sesión
     const ok = await ensureAuth();
     if (!ok) return;
 
     loading.value = true;
 
-    await loadProjects();
+    // 2. Cargamos proyectos
+    try {
+        await loadProjects();
+    } catch (error) {
+        console.error("Error cargando proyectos. ¿Te falta la migración de 'project_user'?", error);
+    }
 
+    // 3. Conectamos Websockets (¡AQUÍ FALTABA EL ID!)
     ensureEcho();
-    if (auth.user?.id) subscribeBoardsRealtime(auth.user.id);
+    if (auth.user?.id) {
+        subscribeBoardsRealtime(auth.user.id);
+    }
 
+    // 4. Autoseleccionar el primer tablero (¡ESTO HABÍA DESAPARECIDO!)
     if (!route.params.id) {
         const first = projects.value[0];
-        if (first) router.replace({ name: "board", params: { id: first.id } });
-        else {
+        if (first) {
+            router.replace({ name: "board", params: { id: first.id } });
+        } else {
             project.value = null;
             columns.value = [];
         }
     }
 
+    // 5. Finalizamos la carga (¡SÚPER IMPORTANTE!)
     loading.value = false;
 });
-
+// On before unmount, disconnect all realtime subscriptions
 onBeforeUnmount(() => {
     disconnectAll();
 });
-
-// --- LÓGICA DE HARVIS (IA) ---
-function buildAiNotice(payload) {
-    if (!payload || typeof payload !== "object") return "";
-
-    const warnings = [];
-    if (payload.context_truncated) {
-        warnings.push(payload.context_warning || "El contexto enviado a la IA fue truncado.");
-    }
-
-    const failed = payload.failed_operations || [];
-    if (Array.isArray(failed) && failed.length) {
-        const preview = failed
-            .slice(0, 3)
-            .map((item) => `#${item.index}: ${item.reason}`)
-            .join(" | ");
-        warnings.push(`Operaciones fallidas: ${preview}`);
-    }
-
-    return warnings.join("\n");
-}
-
-async function handleAiGeneration({ columnId, prompt }) {
-    if (!prompt.trim()) return;
-
-    try {
-        // console.log("🤖 Harvis pensando...");
-
-        const response = await http.post('/api/ai/handle', {
-            column_id: columnId,
-            prompt: prompt
-        });
-
-        const { action } = response.data;
-
-        // Si Harvis creó tareas o reordenó, recargamos el tablero
-        if (action === 'reordered' || action === 'created') {
-            await loadBoard(project.value.id);
-        }
-
-        const notice = buildAiNotice(response.data);
-        if (notice) {
-            alert(notice);
-        }
-
-    } catch (error) {
-        console.error("Error con Harvis AI:", error);
-        const status = error?.response?.status;
-        if (status === 429) {
-            alert("Harvis esta en limite de cuota. Intenta mas tarde.");
-            return;
-        }
-        const msg = error?.response?.data?.message || "Harvis tuvo un problema procesando tu solicitud.";
-        alert(msg);
-    }
-}
 </script>
 
-<style></style>
+<style scoped>
+.page {
+    display: flex;
+    height: 100vh;
+}
+
+.main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.loading {
+    text-align: center;
+    padding: 2rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #888;
+}
+</style>

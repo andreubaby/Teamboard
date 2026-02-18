@@ -1,7 +1,7 @@
 /* styles/02-sidebar.css */
 
 .sidebar {
-    width: 260px;
+    width: 280px;
     background: var(--bg-sidebar); /* */
     backdrop-filter: blur(20px);
     border-right: 1px solid var(--border-color); /* */
@@ -187,7 +187,7 @@ body.light-mode .sb-btn-new:hover {
 
 .avatar {
     width: 32px; height: 32px;
-    border-radius: 8px;
+    border-radius: 50%;
     background: #334155;
     color: #cbd5e1;
     display: grid; place-items: center;

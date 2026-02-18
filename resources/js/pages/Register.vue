@@ -6,20 +6,21 @@ import { useAuthStore } from "../stores/auth";
 const router = useRouter();
 const auth = useAuthStore();
 
+const name = ref("");
 const email = ref("");
 const password = ref("");
-const remember = ref(false);
+const password_confirmation = ref("");
 const localError = ref("");
 
 const uiError = computed(() => localError.value || auth.error);
 
-// Función simple para escapar caracteres peligrosos (Sanitización básica en cliente)
+// Sanitización básica en cliente
 function sanitizeInput(input) {
     if (!input) return "";
     return input.replace(/[<>]/g, "").trim();
 }
 
-watch([email, password], () => {
+watch([name, email, password, password_confirmation], () => {
     if (localError.value) localError.value = "";
     if (auth.error) auth.error = null;
 });
@@ -27,29 +28,34 @@ watch([email, password], () => {
 async function submit() {
     localError.value = "";
 
-    // 1. Sanitización
+    const cleanName = sanitizeInput(name.value);
     const cleanEmail = sanitizeInput(email.value);
-    const cleanPassword = password.value; // La contraseña no se debe alterar, pero se maneja con cuidado
+    const cleanPassword = password.value;
+    const cleanPasswordConf = password_confirmation.value;
 
-    // 2. Validación básica de frontend
+    // Validación básica de frontend
+    if (!cleanName) {
+        localError.value = "El nombre es obligatorio.";
+        return;
+    }
     if (!cleanEmail || !cleanEmail.includes('@')) {
         localError.value = "Por favor, introduce un correo electrónico válido.";
         return;
     }
-
-    if (!cleanPassword) {
-        localError.value = "La contraseña es obligatoria.";
+    if (!cleanPassword || cleanPassword.length < 8) {
+        localError.value = "La contraseña debe tener al menos 8 caracteres.";
+        return;
+    }
+    if (cleanPassword !== cleanPasswordConf) {
+        localError.value = "Las contraseñas no coinciden.";
         return;
     }
 
     try {
-        // Enviamos la versión limpia del email
-        await auth.login(cleanEmail, cleanPassword, remember.value);
+        await auth.register(cleanName, cleanEmail, cleanPassword, cleanPasswordConf);
         router.push("/app");
     } catch (e) {
-        const data = e?.response?.data;
-        // Evitamos mostrar HTML crudo que pueda venir del servidor (aunque Vue escapa {{}} por defecto)
-        localError.value = data?.message || "Credenciales incorrectas";
+        // El store maneja el error y lo pone en auth.error, que se refleja en uiError
     }
 }
 </script>
@@ -63,11 +69,25 @@ async function submit() {
                 <div class="logo-box">TB</div>
                 <div class="texts">
                     <h1>Teamboard</h1>
-                    <p>Gestiona tus proyectos con fluidez</p>
+                    <p>Crea tu cuenta gratis</p>
                 </div>
             </header>
 
             <form @submit.prevent="submit" class="form-stack">
+
+                <div class="input-group">
+                    <label>Nombre Completo</label>
+                    <div class="field-wrapper">
+                        <span class="field-icon">👤</span>
+                        <input
+                            v-model.trim="name"
+                            type="text"
+                            placeholder="Tu nombre"
+                            autofocus
+                        />
+                    </div>
+                </div>
+
                 <div class="input-group">
                     <label>Correo Electrónico</label>
                     <div class="field-wrapper">
@@ -76,7 +96,6 @@ async function submit() {
                             v-model.trim="email"
                             type="email"
                             placeholder="nombre@ejemplo.com"
-                            autofocus
                         />
                     </div>
                 </div>
@@ -88,22 +107,26 @@ async function submit() {
                         <input
                             v-model="password"
                             type="password"
-                            placeholder="••••••••"
+                            placeholder="Mínimo 8 caracteres"
                         />
                     </div>
                 </div>
 
-                <div class="actions">
-                    <label class="checkbox-wrapper">
-                        <input v-model="remember" type="checkbox" />
-                        <span>Recordarme</span>
-                    </label>
-                    <a href="#" class="forgot-link">¿Olvidaste la contraseña?</a>
+                <div class="input-group">
+                    <label>Confirmar Contraseña</label>
+                    <div class="field-wrapper">
+                        <span class="field-icon">🔒</span>
+                        <input
+                            v-model="password_confirmation"
+                            type="password"
+                            placeholder="Repite la contraseña"
+                        />
+                    </div>
                 </div>
 
                 <button class="btn-primary" :disabled="auth.loading">
                     <span v-if="auth.loading" class="spinner"></span>
-                    <span>{{ auth.loading ? "Accediendo..." : "Iniciar Sesión" }}</span>
+                    <span>{{ auth.loading ? "Creando cuenta..." : "Registrarse" }}</span>
                 </button>
 
                 <div v-if="uiError" class="error-banner">
@@ -112,15 +135,16 @@ async function submit() {
             </form>
 
             <footer class="footer">
-                ¿Aún no tienes cuenta?
-                <router-link to="/signup">Regístrate gratis</router-link>
+                ¿Ya tienes una cuenta?
+                <router-link to="/signin">Inicia Sesión</router-link>
             </footer>
         </div>
     </div>
 </template>
 
 <style scoped>
-/* --- Layout & Background --- */
+/* LOS ESTILOS SON EXACTAMENTE LOS MISMOS QUE EN LOGIN.VUE */
+
 .page {
     min-height: 100vh;
     display: flex;
@@ -133,20 +157,18 @@ async function submit() {
     padding: 20px;
 }
 
-/* Luz ambiental animada */
 .ambient-light {
     position: absolute;
     top: 50%; left: 50%;
     width: 120vw; height: 120vh;
     background:
-        radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.15), transparent 50%),
-        radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.15), transparent 50%);
+        radial-gradient(circle at 80% 30%, rgba(99, 102, 241, 0.15), transparent 50%),
+        radial-gradient(circle at 20% 70%, rgba(236, 72, 153, 0.15), transparent 50%);
     transform: translate(-50%, -50%);
     pointer-events: none;
     animation: pulse 10s ease-in-out infinite alternate;
 }
 
-/* --- Glass Card --- */
 .card-glass {
     width: 100%;
     max-width: 400px;
@@ -162,12 +184,11 @@ async function submit() {
     animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* --- Header --- */
 .header {
     display: flex;
     align-items: center;
     gap: 16px;
-    margin-bottom: 32px;
+    margin-bottom: 24px; /* Un poco menos de margen que en login para que quepa bien */
 }
 .logo-box {
     width: 48px; height: 48px;
@@ -183,8 +204,7 @@ async function submit() {
 .texts h1 { margin: 0; font-size: 20px; color: #f8fafc; font-weight: 600; }
 .texts p { margin: 4px 0 0; font-size: 13px; color: #94a3b8; }
 
-/* --- Forms --- */
-.form-stack { display: grid; gap: 20px; }
+.form-stack { display: grid; gap: 16px; } /* Gap reducido para que el formulario no sea tan largo */
 
 .input-group label {
     display: block;
@@ -225,28 +245,6 @@ async function submit() {
 }
 .field-wrapper input:focus + .field-icon { opacity: 1; transform: scale(1.1); }
 
-/* --- Actions --- */
-.actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 13px;
-}
-.checkbox-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #94a3b8;
-    cursor: pointer;
-}
-.forgot-link {
-    color: #818cf8;
-    text-decoration: none;
-    transition: color 0.2s;
-}
-.forgot-link:hover { color: #a5b4fc; text-decoration: underline; }
-
-/* --- Button --- */
 .btn-primary {
     width: 100%;
     padding: 14px;
@@ -262,12 +260,12 @@ async function submit() {
     align-items: center;
     gap: 10px;
     font-size: 15px;
+    margin-top: 8px; /* Margen extra arriba del botón */
 }
 .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
 .btn-primary:active { transform: translateY(1px); }
 .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; filter: grayscale(0.5); }
 
-/* --- Error & Footer --- */
 .error-banner {
     background: rgba(239, 68, 68, 0.15);
     color: #fca5a5;
@@ -285,9 +283,10 @@ async function submit() {
     font-size: 13px;
     color: #64748b;
 }
-.footer a { color: #e2e8f0; font-weight: 600; text-decoration: none; }
+.footer a { color: #818cf8; font-weight: 600; text-decoration: none; transition: color 0.2s;}
+.footer a:hover { color: #a5b4fc; text-decoration: underline; }
 
-/* --- Animations --- */
+/* Animaciones */
 @keyframes slideUp {
     from { opacity: 0; transform: translateY(30px) scale(0.95); }
     to { opacity: 1; transform: translateY(0) scale(1); }

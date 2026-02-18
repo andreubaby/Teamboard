@@ -48,8 +48,21 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-        // si ya tienes register hecho, úsalo; si no, lo dejamos para luego
-        return response()->json(['message' => 'Not implemented'], 501);
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password' => ['required', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
+        ]);
+
+        $user = \App\Models\User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => \Illuminate\Support\Facades\Hash::make($request->password),
+        ]);
+
+        \Illuminate\Support\Facades\Auth::login($user);
+
+        return response()->noContent();
     }
 
     public function user(Request $request)
