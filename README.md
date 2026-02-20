@@ -703,9 +703,7 @@ Este proyecto ha sido desarrollado como **Trabajo de Fin de Máster (TFM)**
 La presentación incluye:
 - 🎯 Objetivos y alcance del proyecto
 - 🏗️ Arquitectura técnica detallada
-- 💡 Decisiones de diseño y tecnologías utilizadas
-- 🚀 Demostraciones en vivo de funcionalidades
-- 📊 Análisis de resultados y conclusiones
+- 💡 Decisiones de tecnologías utilizadas
 
 ---
 
