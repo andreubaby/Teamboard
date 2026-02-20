@@ -182,6 +182,7 @@ class ProjectController extends Controller
                             'description' => $card->description,
                             'position' => $card->position,
                             'priority' => $card->priority,
+                            'due_date' => $card->due_date,
                             'tags' => $card->tags,
                             'assignee' => $card->assignee ? [
                                 'id' => $card->assignee->id,

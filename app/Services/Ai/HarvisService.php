@@ -163,6 +163,24 @@ class HarvisService
                         continue;
                     }
 
+                    if ($type === 'set_due_date') {
+                        if (!isset($action['card_id'])) {
+                            $recordFailure($index, 'set_due_date requiere card_id');
+                            continue;
+                        }
+                        $cardId = $this->parseId($action['card_id']);
+                        if (!$cardId || !isset($existingCardIdSet[$cardId])) {
+                            $recordFailure($index, 'card_id invalido');
+                            continue;
+                        }
+
+                        // Actualizamos la fecha de vencimiento (puede ser un string Y-m-d H:i:s o null)
+                        Card::where('id', $cardId)->update([
+                            'due_date' => $action['due_date'] ?? null,
+                        ]);
+                        $appliedCount += 1;
+                    }
+
                     if ($type === 'set_priority') {
                         if (!isset($action['card_id'], $action['priority']) || !is_string($action['priority'])) {
                             $recordFailure($index, 'set_priority requiere card_id y priority');
@@ -573,8 +591,14 @@ EOT;
 
     private function buildGlobalPrompt(string $boardContext, string $tagsListString, string $userPrompt): string
     {
+    // 1. Obtenemos la fecha y hora REAL de este preciso momento
+        $now = now()->format('Y-m-d H:i:s');
+        $tomorrow = now()->addDay()->format('Y-m-d H:i:s');
         return <<<EOT
 Eres Harvis, un Project Manager Senior experto en metodologias Agiles.
+
+FECHA ACTUAL DEL SISTEMA: {$now}
+(Importante: Si el usuario pide "mañana", te refieres a la fecha: {$tomorrow})
 
 CONTEXTO ACTUAL DEL TABLERO:
 {$boardContext}
@@ -600,6 +624,13 @@ NUEVAS HERRAMIENTAS DE CLASIFICACION:
 11. "add_tag": { "op": "add_tag", "card_id": ID, "tag_name": "Bug" }
     (Usa el nombre de la etiqueta de la lista disponible).
 12. "remove_tag": { "op": "remove_tag", "card_id": ID, "tag_name": "Bug" }
+13. "set_due_date": { "op": "set_due_date", "card_id": ID, "due_date": "YYYY-MM-DD HH:MM:SS" }
+    (Usa null para eliminar la fecha).
+
+CAPACIDADES DE TIEMPO:
+- Si el usuario pregunta "¿Qué vence pronto?", busca tareas con due_date cercano a la fecha actual y devuélvelas o priorízalas.
+- Si piden "Mueve para mañana las tareas de Bug", suma 1 día a la fecha actual y aplica "set_due_date".
+- Si piden "Organiza por entrega", usa la operación "reorder" basándote en las fechas más próximas.
 
 CAPACIDADES DE RAZONAMIENTO:
 - Si piden "Priorizar urgente lo de diseno", busca tareas con "diseno" en el titulo o tag "Design", ponles priority "urgent" y muevelas al principio.
@@ -652,6 +683,7 @@ EOT;
                         'id' => $card->id,
                         'title' => $card->title,
                         'priority' => $card->priority,
+                        'due_date' => $card->due_date,
                         'tags' => $card->tags->pluck('name')->toArray(),
                     ])
                     ->values();

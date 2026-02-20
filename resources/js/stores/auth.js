@@ -27,6 +27,32 @@ export const useAuthStore = defineStore("auth", {
             }
         },
 
+        async updateProfile(formData) {
+            this.loading = true;
+            this.error = null;
+
+            try {
+                // Petición al endpoint de Laravel
+                const { data } = await http.post("/api/profile/update", formData);
+
+                // Actualizamos el estado global del usuario.
+                // Esto dispara la reactividad en todos los componentes que usen 'user'.
+                this.user = data.user;
+
+                return data;
+            } catch (e) {
+                if (e?.response?.status === 422 && e.response.data.errors) {
+                    const errors = e.response.data.errors;
+                    this.error = Object.values(errors)[0][0];
+                } else {
+                    this.error = e?.response?.data?.message || "Error al actualizar el perfil";
+                }
+                throw e;
+            } finally {
+                this.loading = false;
+            }
+        },
+
         async login(email, password, remember = false) {
             this.loading = true;
             this.error = null;
@@ -53,7 +79,6 @@ export const useAuthStore = defineStore("auth", {
             }
         },
 
-        // --- NUEVA FUNCIÓN DE REGISTRO ---
         async register(name, email, password, password_confirmation) {
             this.loading = true;
             this.error = null;
@@ -71,10 +96,9 @@ export const useAuthStore = defineStore("auth", {
                 await this.fetchUser();
                 return true;
             } catch (e) {
-                // Laravel devuelve 422 si la validación falla (ej. email ya existe, password corto)
                 if (e?.response?.status === 422 && e.response.data.errors) {
                     const errors = e.response.data.errors;
-                    this.error = Object.values(errors)[0][0]; // Mostramos el primer error
+                    this.error = Object.values(errors)[0][0];
                 } else {
                     this.error = e?.response?.data?.message || "Error al registrarse";
                 }

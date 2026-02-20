@@ -1,5 +1,4 @@
 import { ref } from "vue";
-// 👇 Importamos apiAddComment
 import { apiUpdateCard, apiDeleteCard, apiLoadTags, apiAddComment } from "../../services/boardApi";
 
 export function useCardEditor({ columns }) {
@@ -13,7 +12,8 @@ export function useCardEditor({ columns }) {
         priority: "normal",
         tagIds: [],
         assigneeId: null,
-        comments: [], // 👇 AÑADIDO: Estado para los comentarios
+        dueDate: "", // 📅 NUEVO
+        comments: [],
     });
 
     const availableTags = ref([]);
@@ -21,7 +21,9 @@ export function useCardEditor({ columns }) {
     async function loadAllTags() {
         if (availableTags.value.length === 0) {
             try {
-                availableTags.value = await apiLoadTags();
+                const response = await apiLoadTags();
+                // Si tu API devuelve { data: [...] }, usa response.data
+                availableTags.value = Array.isArray(response) ? response : response.data;
             } catch (e) {
                 console.error("Error loading tags", e);
             }
@@ -40,7 +42,9 @@ export function useCardEditor({ columns }) {
         edit.value.tagIds = card.tags ? card.tags.map(t => t.id) : [];
         edit.value.assigneeId = card.assignee_id ?? null;
 
-        // 👇 AÑADIDO: Copiamos los comentarios de la tarjeta al editor
+        // 📅 NUEVO: Formateamos la fecha para el input datetime-local (YYYY-MM-DDTHH:mm)
+        edit.value.dueDate = card.due_date ? card.due_date.substring(0, 16) : "";
+
         edit.value.comments = card.comments ? [...card.comments] : [];
     }
 
@@ -54,7 +58,8 @@ export function useCardEditor({ columns }) {
         edit.value.priority = "normal";
         edit.value.tagIds = [];
         edit.value.assigneeId = null;
-        edit.value.comments = []; // 👇 AÑADIDO: Limpiamos los comentarios
+        edit.value.dueDate = ""; // 📅 NUEVO: Limpiamos la fecha
+        edit.value.comments = [];
     }
 
     async function saveEdit() {
@@ -71,6 +76,7 @@ export function useCardEditor({ columns }) {
                 priority: edit.value.priority,
                 tags: edit.value.tagIds,
                 assignee_id: edit.value.assigneeId,
+                due_date: edit.value.dueDate || null, // 📅 NUEVO: Enviamos al servidor
             });
 
             const col = columns.value.find((c) => c.id === edit.value.columnId);
@@ -105,25 +111,23 @@ export function useCardEditor({ columns }) {
         }
     }
 
-    // 👇 AÑADIDO: Función para enviar un comentario
     async function sendComment(text) {
         if (!edit.value.cardId) return;
         try {
-            // Mandamos la petición al backend
             const newComment = await apiAddComment(edit.value.cardId, text);
 
-            // Lo añadimos instantáneamente al modal actual para verlo
-            edit.value.comments.push(newComment);
-
-            // Lo añadimos también al estado principal de la tarjeta en el tablero
             const col = columns.value.find((c) => c.id === edit.value.columnId);
             if (col) {
                 const c = col.cards.find((x) => x.id === edit.value.cardId);
                 if (c) {
-                    if (!c.comments) c.comments = [];
-                    c.comments.push(newComment);
+                    const currentComments = c.comments || [];
+                    c.comments = [...currentComments, newComment];
                 }
             }
+
+            const currentEditComments = edit.value.comments || [];
+            edit.value.comments = [...currentEditComments, newComment];
+
         } catch(e) {
             console.error("Error enviando comentario", e);
             alert("Error al enviar el comentario");
@@ -137,6 +141,6 @@ export function useCardEditor({ columns }) {
         closeEdit,
         saveEdit,
         removeCard,
-        sendComment // 👇 Exportamos la nueva función
+        sendComment
     };
 }

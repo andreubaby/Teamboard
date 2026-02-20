@@ -7,7 +7,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Card extends Model
 {
-    protected $fillable = ['board_column_id', 'title', 'description', 'position', 'priority', 'assignee_id'];
+    protected $fillable = ['board_column_id', 'title', 'description', 'position', 'priority', 'due_date','assignee_id'];
+
+    protected $casts = [
+        'due_date' => 'datetime',
+    ];
 
     public function tags()
     {
