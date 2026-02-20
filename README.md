@@ -694,4 +694,19 @@ Si tienes problemas o preguntas:
 
 ---
 
+## 🎓 Presentación del Proyecto
+
+Este proyecto ha sido desarrollado como **Trabajo de Fin de Máster (TFM)**
+
+📊 **Presentación TFM**: [Ver slides en Google Presentations](https://docs.google.com/presentation/d/13PLEHS8kC4vXz1Ta7PF89FJw7-E57Zn7QJtgMJZIOFw/edit?usp=sharing)
+
+La presentación incluye:
+- 🎯 Objetivos y alcance del proyecto
+- 🏗️ Arquitectura técnica detallada
+- 💡 Decisiones de diseño y tecnologías utilizadas
+- 🚀 Demostraciones en vivo de funcionalidades
+- 📊 Análisis de resultados y conclusiones
+
+---
+
 **¡Disfruta organizando tus proyectos con Teamboard! 🎉**
