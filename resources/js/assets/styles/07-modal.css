@@ -1,13 +1,13 @@
 /* ----------------------------------------------
    07-MODAL.CSS
-   Ventanas emergentes de edición
+   Ventanas emergentes de edición (Versión Final)
 ---------------------------------------------- */
 
 .modal-backdrop {
     position: fixed;
     top: 0; left: 0;
     width: 100vw; height: 100vh;
-    background: rgba(0, 0, 0, 0.6); /* Oscuro siempre para enfocar atención */
+    background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(4px);
     z-index: 9999;
     display: flex;
@@ -17,124 +17,91 @@
 }
 
 .modal {
-    /* CAMBIO: Fondo y borde dinámicos */
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
-
-    width: 90%;
+    width: 95%;
     max-width: 500px;
+    max-height: 90vh; /* Permitimos que crezca más si la pantalla lo permite */
     border-radius: 16px;
     padding: 24px;
-
-    /* Sombra fuerte para elevar el modal */
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-
     display: flex;
     flex-direction: column;
-    gap: 16px;
     animation: scaleIn 0.2s ease-out;
 }
 
 .modal-title {
     font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 8px;
-    color: var(--text-primary); /* */
+    font-weight: 700;
+    margin-bottom: 20px;
+    flex-shrink: 0;
+    color: var(--text-primary);
+}
+
+/* 👇 CONTENEDOR DE SCROLL PRINCIPAL 👇 */
+.modal-scrollable-content {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 12px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Scrollbar personalizada */
+.modal-scrollable-content::-webkit-scrollbar {
+    width: 6px;
+}
+.modal-scrollable-content::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 10px;
 }
 
 .lbl {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-secondary); /* */
-    margin-bottom: -10px;
-    margin-left: 2px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.8px;
+    margin-bottom: -8px;
+    margin-left: 2px;
 }
 
-/* Inputs del modal */
+/* Inputs y Textareas */
 .modal .input,
 .modal .ta {
     width: 100%;
-
-    /* CAMBIO: Fondo neutro semitransparente (funciona en dark y light) */
-    background: rgba(125, 125, 125, 0.1);
-    border: 1px solid var(--border-color); /* */
-    color: var(--text-primary); /* */
-
+    background: rgba(125, 125, 125, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
     border-radius: 10px;
     padding: 12px;
     font-family: inherit;
     font-size: 14px;
     outline: none;
     transition: all 0.2s;
-    resize: vertical;
 }
 
 .modal .input:focus,
 .modal .ta:focus {
     border-color: #6366f1;
-    background: var(--bg-app); /* Ligeramente diferente al foco */
+    background: var(--bg-app);
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
-.ta { min-height: 100px; }
+.ta { min-height: 100px; resize: vertical; }
 
-.modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 8px;
-}
-
-/* Estilos para Botones dentro del modal */
-.btn {
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    border: none;
-    transition: all 0.2s;
-    background: #6366f1;
-    color: white;
-}
-.btn:hover { background: #4f46e5; transform: translateY(-1px); }
-.btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
-
-/* Botón fantasma (Cancelar) */
-.btn.ghost {
-    background: transparent;
-    border: 1px solid var(--border-color);
-    color: var(--text-secondary);
-}
-.btn.ghost:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-    border-color: var(--text-secondary);
-}
-
-/* Animaciones */
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes scaleIn {
-    from { opacity: 0; transform: scale(0.95) translateY(10px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-}
-/* PRIORITY SELECTOR */
+/* PRIORIDAD */
 .priority-selector {
     display: flex;
     gap: 8px;
-    margin-bottom: 12px;
 }
 
 .priority-btn {
     flex: 1;
-    padding: 8px;
+    padding: 10px;
     border-radius: 8px;
     border: 1px solid var(--border-color);
     background: transparent;
@@ -148,134 +115,172 @@
     gap: 6px;
 }
 
-.priority-btn:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-}
-
 .priority-btn.active {
-    background: rgba(99, 102, 241, 0.1); /* Tinted background */
+    background: rgba(99, 102, 241, 0.1);
     border-color: #6366f1;
     color: #6366f1;
     font-weight: 600;
 }
 
 .priority-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
+    width: 8px; height: 8px; border-radius: 50%;
 }
 
-/* TAGS CONTAINER */
+/* ETIQUETAS */
 .tags-container {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 12px;
 }
 
 .tag-btn {
-    padding: 4px 10px;
+    padding: 6px 14px;
     border-radius: 20px;
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
     border: 1px solid transparent;
-    transition: all 0.2s;
-    opacity: 0.6;
     background: var(--bg-hover);
     color: var(--text-secondary);
-}
-
-.tag-btn:hover {
-    opacity: 0.8;
+    transition: all 0.2s;
 }
 
 .tag-btn.selected {
+    border-color: currentColor;
     opacity: 1;
-    border-color: currentColor; /* Uses the text color as border */
 }
 
-/* Estilos para el Chat de Comentarios */
+/* SECCIÓN COMENTARIOS (AMPLIADA) */
 .divider {
     border: none;
-    border-top: 1px solid var(--border-color, #e5e7eb);
+    border-top: 1px solid var(--border-color);
     margin: 16px 0;
 }
+
 .comments-list {
-    max-height: 220px;
-    overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
+    /* Hemos quitado el max-height pequeño para que el scroll del modal lo gestione */
     margin-bottom: 12px;
-    padding-right: 4px;
 }
+
 .comment-item {
     display: flex;
-    gap: 10px;
-    font-size: 14px;
+    gap: 12px;
 }
+
 .comment-avatar {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    background-color: #e5e7eb;
+    background-color: var(--bg-hover);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 600;
-    color: #4b5563;
-    overflow: hidden;
+    font-weight: 700;
+    color: var(--text-secondary);
     flex-shrink: 0;
-    font-size: 12px;
+    font-size: 13px;
+    border: 1px solid var(--border-color);
 }
+
 .comment-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
 }
+
 .comment-header {
     display: flex;
     gap: 8px;
-    align-items: baseline;
+    align-items: center;
     margin-bottom: 4px;
 }
+
 .comment-author {
-    font-weight: 600;
-    color: #111827;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text-primary);
 }
+
 .comment-time {
     font-size: 11px;
-    color: #6b7280;
+    color: var(--text-secondary);
 }
+
 .comment-text {
-    color: #374151;
-    background: #f3f4f6;
-    padding: 8px 12px;
-    border-radius: 0 12px 12px 12px;
-    line-height: 1.4;
-    white-space: pre-wrap; /* Respeta los saltos de línea */
+    color: var(--text-primary);
+    background: var(--bg-hover);
+    padding: 12px 16px;
+    border-radius: 0 14px 14px 14px;
+    line-height: 1.5;
+    font-size: 14px;
+    white-space: pre-wrap;
+    border: 1px solid var(--border-color);
 }
+
+/* ÁREA DE ESCRITURA */
 .new-comment {
+    margin-top: 12px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
     align-items: flex-end;
+    flex-shrink: 0;
 }
+
 .comment-ta {
-    width: 100%;
-    min-height: 50px;
-    resize: vertical;
-    font-size: 14px;
+    min-height: 80px !important;
+    padding: 12px !important;
 }
+
+/* BOTONES Y ACCIONES */
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    background: #6366f1;
+    color: white;
+}
+
+.btn:hover:not(:disabled) {
+    background: #4f46e5;
+    transform: translateY(-1px);
+}
+
+.btn.ghost {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+
+.btn-small {
+    padding: 8px 16px;
+    font-size: 13px;
+}
+
 .no-comments {
     font-size: 13px;
-    color: #6b7280;
+    color: var(--text-secondary);
     text-align: center;
-    padding: 10px 0;
+    padding: 30px 0;
 }
-.btn-small {
-    padding: 6px 14px;
-    font-size: 13px;
+
+/* Animaciones */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.97) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
 }

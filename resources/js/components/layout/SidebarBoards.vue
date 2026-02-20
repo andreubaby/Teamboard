@@ -29,7 +29,7 @@
                 :title="collapsed ? p.name : ''"
             >
                 <span class="icon-board">
-                    {{ collapsed ? (p.name.charAt(0) || '?').toUpperCase() : '🗂' }}
+                    {{ collapsed ? (p.name.charAt(0) || '?').toUpperCase() : '▶︎' }}
                 </span>
                 <span v-if="!collapsed" class="sb-item-name">{{ p.name }}</span>
                 <span v-if="activeId === p.id && !collapsed" class="active-dot"></span>
@@ -41,10 +41,9 @@
         </div>
 
         <div class="sb-bottom">
-
             <Transition name="pop-up">
                 <div v-if="showUserMenu" class="user-menu-popup" :class="{ 'popup-collapsed': collapsed }">
-                    <div class="menu-item">
+                    <div class="menu-item" @click="$emit('open-profile'); showUserMenu = false;">
                         <span class="m-icon">⚙️</span>
                         <span v-if="!collapsed">Ajustes</span>
                     </div>
@@ -67,14 +66,15 @@
 
             <div v-if="showUserMenu" class="menu-overlay" @click="showUserMenu = false"></div>
 
-            <div
-                class="user-profile"
-                :class="{ 'compact': collapsed, 'active': showUserMenu }"
-                :title="collapsed ? (user?.name || 'Usuario') : ''"
-                @click="showUserMenu = !showUserMenu"
-            >
-                <div class="avatar">
-                    <span>{{ userInitial }}</span>
+            <div class="user-profile" :class="{ 'compact': collapsed, 'active': showUserMenu }" @click="showUserMenu = !showUserMenu">
+                <div class="avatar-sb" :class="{ 'has-img': user?.avatar_url && !user.avatar_url.includes('ui-avatars.com') }">
+                    <img
+                        v-if="user?.avatar_url && !user.avatar_url.includes('ui-avatars.com')"
+                        :src="user.avatar_url + (user.avatar_url.includes('?') ? '&' : '?') + 't=' + imageTimestamp"
+                        class="avatar-img"
+                        @error="(e) => e.target.style.display = 'none'"
+                    >
+                    <span v-else class="avatar-initials">{{ userInitial }}</span>
                 </div>
 
                 <div v-if="!collapsed" class="user-info">
@@ -89,7 +89,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useAuthStore } from "../../stores/auth";
 
 const props = defineProps({
@@ -100,92 +100,146 @@ const props = defineProps({
     collapsed: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["select", "logout", "create", "toggle-collapse"]);
+const emit = defineEmits(["select", "logout", "create", "toggle-collapse", "open-profile"]);
 
 const auth = useAuthStore();
 const user = computed(() => auth.user);
 const userInitial = computed(() => user.value?.name?.charAt(0).toUpperCase() || "U");
 
-// Estado del menú popup
 const showUserMenu = ref(false);
+const imageTimestamp = ref(Date.now());
+
+// Vigilamos el avatar para forzar recarga de imagen si cambia en el modal de perfil
+watch(() => user.value?.avatar_url, () => {
+    imageTimestamp.value = Date.now();
+});
 
 function handleLogout() {
     showUserMenu.value = false;
     emit("logout");
 }
 
-// ---------------------------------------------------------
-// LÓGICA DE TEMA (MODO OSCURO / CLARO)
-// ---------------------------------------------------------
-const isDark = ref(true); // Asumimos oscuro por defecto
+const isDark = ref(true);
 
 function toggleTheme() {
     isDark.value = !isDark.value;
-
-    // 1. Guardar preferencia
     localStorage.setItem('harvis_theme', isDark.value ? 'dark' : 'light');
-
-    // 2. Aplicar cambios al DOM
     updateBodyClass();
 }
 
 function updateBodyClass() {
-    if (isDark.value) {
-        document.body.classList.remove('light-mode');
-    } else {
-        document.body.classList.add('light-mode');
-    }
+    if (isDark.value) document.body.classList.remove('light-mode');
+    else document.body.classList.add('light-mode');
 }
 
-// Al cargar el componente, leemos la memoria
 onMounted(() => {
     const savedTheme = localStorage.getItem('harvis_theme');
-    // Si no existe o es 'dark', isDark = true. Si es 'light', isDark = false.
     isDark.value = savedTheme !== 'light';
     updateBodyClass();
 });
 </script>
 
 <style scoped>
-/* Aseguramos que el contenedor inferior sea relativo para
-   que el popup absolute se posicione respecto a él
-*/
+/* --- FIXES CRÍTICOS PARA EL AVATAR --- */
+.avatar {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    border-radius: 50% !important;
+    background-color: #334155 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important; /* Recorta la imagen en círculo */
+    flex-shrink: 0 !important;
+    padding: 0 !important;
+}
+
+.avatar-img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important; /* Mantiene proporción sin estirar */
+    display: block !important;
+}
+
+.avatar-initials {
+    font-size: 13px;
+    font-weight: 700;
+    color: #cbd5e1;
+}
+
+/* Ajuste para sidebar colapsado */
+.user-profile.compact .avatar {
+    width: 40px !important;
+    height: 40px !important;
+}
+
+/* --- RESTO DE ESTILOS --- */
 .sb-bottom {
     margin-top: auto;
     padding: 12px;
     position: relative;
-    z-index: 60; /* Asegura estar por encima de listas */
+    z-index: 60;
 }
 
-/* --- ESTILOS DEL POPUP (Usando Variables CSS) --- */
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: rgba(125, 125, 125, 0.1);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.user-profile:hover {
+    background: var(--bg-hover);
+}
+
+.user-info {
+    flex: 1;
+    overflow: hidden;
+}
+
+.u-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.u-email {
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Popup Menu */
 .user-menu-popup {
     position: absolute;
-    bottom: 100%; /* Empuja hacia arriba */
+    bottom: 100%;
     left: 12px;
     right: 12px;
     margin-bottom: 10px;
-
-    /* Variables dinámicas definidas en main.css */
     background: var(--bg-sidebar);
     border: 1px solid var(--border-color);
-    color: var(--text-secondary);
-
     box-shadow: 0 -4px 20px var(--shadow-color);
     border-radius: 12px;
     padding: 6px;
     z-index: 100;
-    overflow: hidden;
-    min-width: 180px;
 }
 
 .user-menu-popup.popup-collapsed {
     left: 12px;
     right: auto;
-    width: auto;
     min-width: max-content;
 }
 
-/* Items del menú */
 .menu-item {
     display: flex;
     align-items: center;
@@ -194,9 +248,7 @@ onMounted(() => {
     border-radius: 8px;
     cursor: pointer;
     font-size: 13px;
-    font-weight: 500;
     transition: all 0.2s;
-    user-select: none;
 }
 
 .menu-item:hover {
@@ -205,37 +257,4 @@ onMounted(() => {
 }
 
 .menu-item.text-danger { color: #f87171; }
-.menu-item.text-danger:hover { background: rgba(239, 68, 68, 0.1); }
-
-.menu-divider {
-    height: 1px;
-    background: var(--border-color);
-    margin: 4px 6px;
-}
-
-.m-icon {
-    font-size: 16px;
-    min-width: 20px;
-    text-align: center;
-}
-
-/* Overlay invisible */
-.menu-overlay {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    z-index: 50;
-    cursor: default;
-}
-
-/* Animaciones */
-.pop-up-enter-active,
-.pop-up-leave-active {
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.pop-up-enter-from,
-.pop-up-leave-to {
-    opacity: 0;
-    transform: translateY(10px) scale(0.95);
-}
 </style>

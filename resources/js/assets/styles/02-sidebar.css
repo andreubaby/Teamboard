@@ -2,16 +2,16 @@
 
 .sidebar {
     width: 280px;
-    background: var(--bg-sidebar); /* */
+    background: var(--bg-sidebar);
     backdrop-filter: blur(20px);
-    border-right: 1px solid var(--border-color); /* */
+    border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
     padding: 24px 16px;
     transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     z-index: 50;
     font-family: 'Inter', sans-serif;
-    color: var(--text-primary); /* */
+    color: var(--text-primary);
 }
 
 .sidebar.is-collapsed {
@@ -40,7 +40,7 @@
     place-items: center;
     font-weight: 800;
     font-size: 15px;
-    color: white; /* Logo texto siempre blanco sobre el gradiente */
+    color: white;
     box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
 }
 
@@ -48,7 +48,7 @@
 .titles .name {
     font-weight: 700;
     font-size: 15px;
-    color: var(--text-primary); /* */
+    color: var(--text-primary);
     letter-spacing: -0.5px;
 }
 .titles .sub { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
@@ -56,17 +56,17 @@
 .sb-collapse {
     width: 24px; height: 24px;
     background: transparent; border: none;
-    color: var(--text-secondary); /* */
+    color: var(--text-secondary);
     cursor: pointer;
     border-radius: 6px; display: grid; place-items: center;
     transition: all 0.2s;
 }
 .sb-collapse:hover {
-    background: var(--bg-hover); /* */
+    background: var(--bg-hover);
     color: var(--text-primary);
 }
 
-/* Botón Nuevo Board Estilizado */
+/* Botón Nuevo Board */
 .sb-btn-new {
     width: 100%;
     display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -82,25 +82,20 @@
 .sb-btn-new:hover {
     background: rgba(99, 102, 241, 0.2);
     border-color: #818cf8;
-    color: var(--text-primary); /* Texto visible en hover */
+    color: var(--text-primary);
     transform: translateY(-1px);
 }
-/* Ajuste de color para modo claro si el azul es muy claro */
+
 body.light-mode .sb-btn-new {
     color: #4f46e5;
     border-color: #4f46e5;
 }
-body.light-mode .sb-btn-new:hover {
-    background: rgba(99, 102, 241, 0.15);
-    color: #4338ca;
-}
 
-
-/* --- Lista --- */
+/* --- Lista de Proyectos --- */
 .sb-section-title {
     font-size: 10px;
     font-weight: 700;
-    color: var(--text-secondary); /* */
+    color: var(--text-secondary);
     margin-bottom: 8px;
     padding-left: 8px;
     text-transform: uppercase;
@@ -120,7 +115,7 @@ body.light-mode .sb-btn-new:hover {
     width: 100%; text-align: left;
     padding: 10px 12px;
     border-radius: 10px;
-    color: var(--text-secondary); /* */
+    color: var(--text-secondary);
     cursor: pointer;
     display: flex; align-items: center; gap: 12px;
     transition: all 0.2s;
@@ -128,20 +123,16 @@ body.light-mode .sb-btn-new:hover {
 }
 
 .sb-item:hover {
-    background: var(--bg-hover); /* */
-    color: var(--text-primary); /* */
+    background: var(--bg-hover);
+    color: var(--text-primary);
 }
 
-/* Item Activo */
 .sb-item.active {
     background: linear-gradient(90deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.05) 100%);
     color: #6366f1;
     font-weight: 600;
     border-left: 3px solid #6366f1;
 }
-
-.icon-board { font-size: 16px; opacity: 0.8; }
-.sb-item.active .icon-board { opacity: 1; }
 
 .active-dot {
     margin-left: auto;
@@ -151,85 +142,105 @@ body.light-mode .sb-btn-new:hover {
     box-shadow: 0 0 8px #6366f1;
 }
 
-/* Estilo compacto */
 .sb-item.compact {
     justify-content: center;
     padding: 12px 0;
     font-size: 16px;
     font-weight: 700;
-    color: var(--text-primary); /* */
-    background: var(--bg-hover); /* */
-    border: 1px solid var(--border-color); /* */
-}
-.sb-item.compact.active {
-    background: #6366f1;
-    color: white;
-    border: none;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
 }
 
 /* --- Footer (Perfil Usuario) --- */
-.sb-bottom { margin-top: auto; padding-top: 10px; }
+.sb-bottom {
+    margin-top: auto;
+    padding: 10px;
+    position: relative;
+    z-index: 60;
+}
 
 .user-profile {
-    display: flex; align-items: center; gap: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     padding: 10px;
-    /* Fondo más sutil */
     background: rgba(125, 125, 125, 0.1);
     border-radius: 12px;
     border: 1px solid transparent;
+    cursor: pointer;
     transition: all 0.2s;
 }
-.user-profile:hover {
-    background: var(--bg-hover); /* */
-    border-color: var(--border-color); /* */
+
+.user-profile:hover, .user-profile.active {
+    background: var(--bg-hover);
+    border-color: var(--border-color);
 }
 
-.avatar {
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    background: #334155;
-    color: #cbd5e1;
-    display: grid; place-items: center;
-    font-weight: 700; font-size: 13px;
+/* Avatar optimizado para Sidebar (Name-spaced) */
+.avatar-sb {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    background: #334155 !important;
+    color: #cbd5e1 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+    flex-shrink: 0 !important;
+    position: relative !important;
 }
 
+.avatar-sb img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+}
+
+/* Info de Usuario */
 .user-info { flex: 1; overflow: hidden; }
 .u-name {
     font-size: 13px;
     font-weight: 600;
-    color: var(--text-primary); /* */
+    color: var(--text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 .u-email {
     font-size: 11px;
-    color: var(--text-secondary); /* */
+    color: var(--text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.btn-logout {
-    background: transparent; border: none;
-    color: var(--text-secondary); /* */
-    cursor: pointer;
-    padding: 6px;
-    border-radius: 6px;
-    transition: 0.2s;
-}
-.btn-logout:hover {
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
+.u-options {
+    color: var(--text-secondary);
+    font-size: 18px;
 }
 
-.user-profile.compact {
-    padding: 0;
-    background: transparent;
-    border: none;
-    flex-direction: column;
-    gap: 12px;
+/* Estado Colapsado */
+.sidebar.is-collapsed .user-profile {
+    justify-content: center;
+    padding: 8px 0;
 }
-.user-profile.compact .user-info { display: none; }
-.user-profile.compact .avatar { width: 40px; height: 40px; }
+
+.sidebar.is-collapsed .avatar-sb {
+    width: 40px !important;
+    height: 40px !important;
+}
+
+.sidebar.is-collapsed .user-info,
+.sidebar.is-collapsed .u-options {
+    display: none;
+}
+
+/* Ocultar iniciales si hay imagen para evitar superposiciones */
+.avatar-sb.has-img .avatar-initials {
+    display: none !important;
+}
+
+.avatar-sb img {
+    z-index: 2; /* Asegura que la imagen esté por encima del fondo */
+    position: relative;
+}

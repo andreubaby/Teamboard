@@ -211,6 +211,7 @@ class CardController extends Controller
             'title'       => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'priority'    => ['nullable', 'string', 'in:low,normal,high,urgent'],
+            'due_date'    => ['nullable', 'date'],
             'tags'        => ['nullable', 'array'],
             'tags.*'      => ['integer', 'exists:tags,id'],
             'assignee_id' => ['nullable', 'integer', 'exists:users,id'],
@@ -221,12 +222,17 @@ class CardController extends Controller
 
         // Validate assignee is member or owner
         if (array_key_exists('assignee_id', $data) && !empty($data['assignee_id'])) {
-             $isOwner = $column->project->owner_id === (int) $data['assignee_id'];
-             $isMember = $column->project->members->contains('id', (int) $data['assignee_id']);
-             if (!$isOwner && !$isMember) {
-                  return response()->json(['message' => 'Assignee must be a project member'], 422);
-             }
+            $isOwner = $column->project->owner_id === (int) $data['assignee_id'];
+            $isMember = $column->project->members->contains('id', (int) $data['assignee_id']);
+            if (!$isOwner && !$isMember) {
+                return response()->json(['message' => 'Assignee must be a project member'], 422);
+            }
         }
+
+        // --- 👇 CÓDIGO AÑADIDO PARA NOTIFICACIONES 👇 ---
+        // Guardamos quién estaba asignado ANTES de actualizar
+        $oldAssigneeId = $card->assignee_id;
+        // ------------------------------------------------
 
         // 2. Update basic fields
         $updateData = [];
@@ -234,8 +240,25 @@ class CardController extends Controller
         if (array_key_exists('description', $data)) $updateData['description'] = $data['description'];
         if (isset($data['priority'])) $updateData['priority'] = $data['priority'];
         if (array_key_exists('assignee_id', $data)) $updateData['assignee_id'] = $data['assignee_id'];
+        // 👇 ESTO ES LO QUE TE FALTA SEGURO 👇
+        if (array_key_exists('due_date', $data)) {
+            $updateData['due_date'] = $data['due_date'];
+        }
 
         $card->update($updateData);
+
+        // --- 👇 CÓDIGO AÑADIDO PARA NOTIFICACIONES 👇 ---
+        // Si se envió 'assignee_id', no es nulo y es DIFERENTE al que había antes
+        if (array_key_exists('assignee_id', $data) && $data['assignee_id'] !== $oldAssigneeId && $data['assignee_id'] !== null) {
+            $newAssignee = \App\Models\User::find($data['assignee_id']);
+
+            // Evitamos notificar si el usuario se asigna la tarea a sí mismo
+            if ($newAssignee && $newAssignee->id !== $request->user()->id) {
+                // Enviamos la notificación
+                $newAssignee->notify(new \App\Notifications\UserAssignedToCard($card, $request->user()));
+            }
+        }
+        // ------------------------------------------------
 
         // 3. Sync Tags (Many-to-Many)
         if (isset($data['tags'])) {
@@ -243,7 +266,7 @@ class CardController extends Controller
         }
 
         // Reload tags and assignee to return full object
-        $card->load(['tags', 'assignee']);
+        $card->load(['tags', 'assignee', 'comments.user']); // Aseguramos que cargue comments.user también
 
         try {
             // Broadcast with updated data including priority, tags, and assignee
@@ -259,7 +282,7 @@ class CardController extends Controller
 
     // GET /api/tags
     public function getTags() {
-        return response()->json(Tag::all());
+        return response()->json(\App\Models\Tag::all());
     }
 
     // DELETE /api/cards/{card}

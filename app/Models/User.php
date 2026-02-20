@@ -22,6 +22,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'avatar_url',
     ];
 
     /**
@@ -44,11 +45,20 @@ class User extends Authenticatable
     /**
      * Get the user's avatar URL.
      */
-    public function getAvatarUrlAttribute(): string
+    public function getAvatarUrlAttribute($value): string
     {
-        // Use UI Avatars for initials avatar
-        $name = urlencode($this->name);
-        return "https://ui-avatars.com/api/?name={$name}&color=7F9CF5&background=EBF4FF";
+        if (empty($value)) {
+            $name = urlencode($this->name);
+            return "https://ui-avatars.com/api/?name={$name}&color=7F9CF5&background=EBF4FF";
+        }
+
+        // Si ya es una URL completa (como la del usuario 2), la devolvemos
+        if (filter_var($value, FILTER_VALIDATE_URL)) {
+            return $value;
+        }
+
+        // Si es un path (como el de Marta), generamos la URL correcta
+        return asset('storage/' . $value);
     }
 
     /**

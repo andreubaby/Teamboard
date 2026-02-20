@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\BoardColumnController;
@@ -66,4 +67,22 @@ Route::middleware('auth:sanctum')->group(function () {
     // -------------------------
     Route::post('/cards/{card}/comments', [App\Http\Controllers\Api\CommentController::class, 'store']);
 
+    // NOTIFICACIONES (TIENEN QUE ESTAR AQUÍ DENTRO)
+    Route::get('/notifications', function (\Illuminate\Http\Request $request) {
+        return response()->json($request->user()->unreadNotifications);
+    });
+
+    Route::post('/notifications/{id}/read', function (\Illuminate\Http\Request $request, $id) {
+        $notification = $request->user()->notifications()->findOrFail($id);
+        $notification->markAsRead();
+        return response()->json(['ok' => true]);
+    });
+
+    Route::post('/notifications/read-all', function (\Illuminate\Http\Request $request) {
+        $request->user()->unreadNotifications->markAsRead();
+        return response()->json(['ok' => true]);
+    });
+
+    //Perfil
+    Route::post('/profile/update', [ProfileController::class, 'update']);
 });

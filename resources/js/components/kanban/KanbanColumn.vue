@@ -70,8 +70,9 @@
                 :class="{ over: isOver(idx) }"
             >
                 <div class="card-tags">
-                    <span class="tag tag-design">Design</span>
-                    <span v-if="card.id % 2 === 0" class="tag tag-high">High</span>
+                    <span v-for="tag in card.tags" :key="tag.id" class="tag" :style="{ color: tag.color, backgroundColor: tag.color + '20' }">
+                        {{ tag.name }}
+                    </span>
                 </div>
 
                 <div class="card-row">
@@ -88,7 +89,16 @@
                 </div>
 
                 <div class="card-footer-meta">
-                    <div class="meta-date"></div> <!-- De momento vacío o fecha creación -->
+                    <div class="meta-date">
+                        <div v-if="card.due_date"
+                             class="due-date-badge"
+                             :class="{ 'overdue': isOverdue(card.due_date) }"
+                             :title="'Vence el: ' + formatFullDate(card.due_date)"
+                        >
+                            <span class="calendar-icon">📅</span>
+                            {{ formatShortDate(card.due_date) }}
+                        </div>
+                    </div>
 
                     <div class="mini-avatar"
                          v-if="card.assignee"
@@ -139,7 +149,6 @@ const emit = defineEmits([
     "open-edit",
     "remove-card",
     "col-pointerdown",
-    // ✅ Nuevo evento para la IA
     "generate-ai"
 ]);
 
@@ -156,37 +165,49 @@ const aiInputRef = ref(null);
 function toggleAi() {
     aiMode.value = !aiMode.value;
     if (aiMode.value) {
-        // Enfocar el input automáticamente
         nextTick(() => aiInputRef.value?.focus());
     }
 }
 
+// --- Lógica de Fechas ---
+function isOverdue(dateStr) {
+    if (!dateStr) return false;
+    return new Date(dateStr) < new Date();
+}
+
+function formatShortDate(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString([], { day: '2-digit', month: 'short' });
+}
+
+function formatFullDate(dateStr) {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleString([], {
+        dateStyle: 'short',
+        timeStyle: 'short'
+    });
+}
+
 function submitAi() {
     if (!aiPrompt.value.trim()) return;
-
-    // Emitimos el prompt y el ID de la columna
     emit("generate-ai", {
         columnId: props.column.id,
         prompt: aiPrompt.value
     });
-
-    // Limpiamos y cerramos
     aiPrompt.value = "";
     aiMode.value = false;
 }
 </script>
 
 <style scoped>
-/* Pequeños ajustes para la IA aquí, o muévelos a 05-column.css */
-
 .header-actions {
     display: flex;
     gap: 4px;
 }
 
-/* Botón Mágico */
 .ai-trigger {
-    color: #fbbf24; /* Color ámbar/dorado */
+    color: #fbbf24;
     background: rgba(251, 191, 36, 0.1);
     border: 1px solid rgba(251, 191, 36, 0.2);
 }
@@ -195,7 +216,6 @@ function submitAi() {
     box-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
 }
 
-/* Caja de Input IA */
 .ai-box {
     margin: 0 8px 12px;
     background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
@@ -213,9 +233,10 @@ function submitAi() {
     border: none;
     resize: none;
     font-size: 13px;
+    color: white;
 }
 .ai-input:focus {
-    box-shadow: none; /* Quitamos el focus azul normal */
+    box-shadow: none;
     background: rgba(15, 23, 42, 0.8);
 }
 
@@ -229,7 +250,7 @@ function submitAi() {
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
-    color: #a855f7; /* Morado */
+    color: #a855f7;
     letter-spacing: 0.5px;
 }
 
@@ -248,5 +269,43 @@ function submitAi() {
 @keyframes slideDown {
     from { opacity: 0; transform: translateY(-5px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* ESTILOS DE FECHA Y FOOTER */
+.card-footer-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    min-height: 24px;
+}
+
+.due-date-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #94a3b8;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s;
+}
+
+.due-date-badge.overdue {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.calendar-icon {
+    font-size: 11px;
+    filter: grayscale(1) brightness(1.5);
+}
+
+.card:hover .due-date-badge {
+    border-color: rgba(255, 255, 255, 0.2);
 }
 </style>

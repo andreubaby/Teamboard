@@ -10,9 +10,70 @@
             <span class="crumb-placeholder" v-else>Selecciona un proyecto</span>
         </div>
 
-        <div class="top-actions">
-            <div class="members-stack" style="position: relative;" v-if="project && project.members">
+        <div class="search-wrapper" v-if="project">
+            <div class="search-inner">
+                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input
+                    type="text"
+                    :value="search"
+                    @input="$emit('update:search', $event.target.value)"
+                    placeholder="Buscar en este tablero..."
+                    class="topbar-search-input"
+                />
+                <button v-if="search" class="clear-search" @click="$emit('update:search', '')">✕</button>
+            </div>
+        </div>
 
+        <div class="top-actions">
+
+            <div class="notifications-wrapper" @focusout="handleFocusOut" tabindex="0">
+                <button class="btn-icon bell-btn" @click="toggleNotifications" title="Notificaciones">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    <span v-if="unreadCount > 0" class="badge">{{ unreadCount }}</span>
+                </button>
+
+                <div v-if="showDropdown" class="dropdown-menu">
+                    <div class="dropdown-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Notificaciones</span>
+                        <button v-if="notifications.length > 0" @click="markAllAsRead" style="background: none; border: none; color: #6366f1; font-size: 12px; cursor: pointer;">
+                            Marcar todas leídas
+                        </button>
+                    </div>
+
+                    <div class="dropdown-body">
+                        <div v-if="notifications.length === 0" class="empty-noti">
+                            No tienes notificaciones nuevas.
+                        </div>
+
+                        <div
+                            v-for="noti in notifications"
+                            :key="noti.id"
+                            class="noti-item"
+                            @click="markAsRead(noti.id)"
+                        >
+                            <img
+                                v-if="getNotiData(noti).assigner_avatar"
+                                :src="getNotiData(noti).assigner_avatar"
+                                class="noti-avatar"
+                                alt="Avatar"
+                            />
+                            <div v-else class="noti-avatar-placeholder">👤</div>
+
+                            <div class="noti-content">
+                                <p class="noti-text">{{ getNotiData(noti).message || 'Tienes una nueva notificación' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="divider-v"></div>
+            <div class="members-stack" style="position: relative;" v-if="project && project.members">
                 <div
                     class="avatar-circle member-avatar-wrapper"
                     :title="'Owner: ' + (project.owner?.name || 'Unknown')"
@@ -116,22 +177,129 @@
 </template>
 
 <script setup>
-import { ref, nextTick, watch, computed } from 'vue';
+import { ref, nextTick, watch, computed, onMounted, onBeforeUnmount } from 'vue';
 import { http } from '../../lib/http';
+import { makeEcho } from "../../lib/echo";
 import { apiRemoveMember } from '../../services/boardApi';
 import { useAuthStore } from '../../stores/auth';
 
 const props = defineProps({
     project: { type: Object, default: null },
     disableAddColumn: { type: Boolean, default: true },
+    search: { type: String, default: "" }, // 🔍 Recibe el searchQuery de Board.vue
 });
 
-const emit = defineEmits(["add-column", "refresh-board", "filter-user"]);
+const emit = defineEmits(["add-column", "refresh-board", "filter-user", "open-card", "update:search"]);
 
 const auth = useAuthStore();
 const isOwner = computed(() => props.project?.owner_id === auth.user?.id);
 
-// --- User Filtering ---
+// ==========================================
+// 🔔 LOGICA DE NOTIFICACIONES
+// ==========================================
+const notifications = ref([]);
+const showDropdown = ref(false);
+let echoInstance = null;
+
+const unreadCount = computed(() => notifications.value.length);
+
+function toggleNotifications() {
+    showDropdown.value = !showDropdown.value;
+}
+
+function handleFocusOut(e) {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+        showDropdown.value = false;
+    }
+}
+
+async function fetchNotifications() {
+    try {
+        const { data } = await http.get('/api/notifications');
+        if (Array.isArray(data)) {
+            notifications.value = data;
+        } else {
+            notifications.value = [];
+        }
+    } catch (e) {
+        console.error("Error cargando notificaciones", e);
+        notifications.value = [];
+    }
+}
+
+async function markAsRead(notiId) {
+    try {
+        // Buscamos la notificación en nuestro array antes de borrarla
+        const noti = notifications.value.find(n => n.id === notiId);
+        const data = getNotiData(noti);
+
+        await http.post(`/api/notifications/${notiId}/read`);
+        notifications.value = notifications.value.filter(n => n.id !== notiId);
+        showDropdown.value = false;
+
+        // Si la notificación tiene un card_id, avisamos para abrirla
+        if (data && data.card_id) {
+            emit('open-card', data.card_id);
+        }
+    } catch (e) {
+        console.error("Error al procesar notificación", e);
+    }
+}
+
+// NUEVO: Función para limpiar todas de golpe
+async function markAllAsRead() {
+    try {
+        await http.post('/api/notifications/read-all');
+        notifications.value = [];
+        showDropdown.value = false;
+    } catch (e) {
+        console.error("Error marcando todas como leídas", e);
+    }
+}
+
+function getNotiData(noti) {
+    if (!noti) return {};
+    if (noti.data && typeof noti.data === 'object') return noti.data;
+    return noti;
+}
+
+onMounted(() => {
+    fetchNotifications();
+
+    if (auth.user?.id) {
+        echoInstance = makeEcho();
+        echoInstance.private(`App.Models.User.${auth.user.id}`)
+            .notification((notification) => {
+                // 1. Primero actualizamos la UI para que sea instantáneo
+                notifications.value.unshift({
+                    id: notification.id,
+                    data: notification
+                });
+
+                console.log("🔔 Nueva Notificación en vivo!", notification);
+
+                // 2. Intentamos reproducir el sonido
+                // Nota: El navegador solo lo permitirá si ya has hecho clic en la página
+                const audio = new Audio('/sounds/notification.mp3');
+                audio.volume = 0.4; // Un volumen sutil para no asustar
+
+                audio.play().catch(() => {
+                    // Simplemente registramos un log informativo en lugar de un warn molesto
+                    console.log("🔊 Sonido en espera: El navegador bloqueó el audio. Sonará tras tu primera interacción con la web.");
+                });
+            });
+    }
+});
+
+onBeforeUnmount(() => {
+    if (echoInstance && auth.user?.id) {
+        echoInstance.leave(`App.Models.User.${auth.user.id}`);
+    }
+});
+
+// ==========================================
+// 👤 LOGICA DE MIEMBROS Y FILTROS
+// ==========================================
 const selectedMemberId = ref(null);
 
 function getInitials(name) {
@@ -148,7 +316,6 @@ function toggleFilter(userId) {
     emit('filter-user', selectedMemberId.value);
 }
 
-// --- Member Invitation ---
 const showInviteInput = ref(false);
 const inviteEmail = ref('');
 const inviteInputRef = ref(null);
@@ -180,7 +347,6 @@ async function submitInvite() {
     }
 }
 
-// --- Member Removal ---
 async function removeMember(member) {
     if (!confirm(`¿Estás seguro de que quieres eliminar a ${member.name} del tablero?`)) return;
 
@@ -192,7 +358,9 @@ async function removeMember(member) {
     }
 }
 
-// --- Global AI (Harvis) ---
+// ==========================================
+// ✨ LOGICA DE IA GLOBAL (HARVIS)
+// ==========================================
 const showAiInput = ref(false);
 const prompt = ref('');
 const loading = ref(false);
@@ -259,3 +427,7 @@ async function submitGlobalAi() {
     }
 }
 </script>
+
+<style scoped>
+/* LOS ESTILOS QUE YA TENÍAS PARA LA CAMPANA SIGUEN VIVOS DESDE TU CSS GLOBAL/EXTERNO */
+</style>
